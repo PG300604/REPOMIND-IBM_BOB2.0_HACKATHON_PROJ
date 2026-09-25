@@ -1,3 +1,37 @@
 INFO:     Will watch for changes in these directories: ['P:\\RepoMind']
 INFO:     Uvicorn running on http://127.0.0.1:8000 (Press CTRL+C to quit)
 INFO:     Started reloader process [19008] using WatchFiles
+INFO:     Started server process [2356]
+INFO:     Waiting for application startup.
+ERROR:    Traceback (most recent call last):
+  File "P:\RepoMind\.venv\Lib\site-packages\starlette\routing.py", line 654, in lifespan
+    async with self.lifespan_context(app) as maybe_state:
+               ^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\priya\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "P:\RepoMind\.venv\Lib\site-packages\fastapi\routing.py", line 240, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "C:\Users\priya\AppData\Local\Programs\Python\Python312\Lib\contextlib.py", line 210, in __aenter__
+    return await anext(self.gen)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "P:\RepoMind\.venv\Lib\site-packages\fastapi\routing.py", line 240, in merged_lifespan
+    async with original_context(app) as maybe_original_state:
+               ^^^^^^^^^^^^^^^^^^^^^
+  File "P:\RepoMind\.venv\Lib\site-packages\fastapi\routing.py", line 265, in __aenter__
+    await self._router._startup()
+  File "P:\RepoMind\.venv\Lib\site-packages\fastapi\routing.py", line 6377, in _startup
+    handler()
+  File "P:\RepoMind\backend\main.py", line 52, in startup
+    print("[startup] Database initialised \u2713")
+  File "C:\Users\priya\AppData\Local\Programs\Python\Python312\Lib\encodings\cp1252.py", line 19, in encode
+    return codecs.charmap_encode(input,self.errors,encoding_table)[0]
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+UnicodeEncodeError: 'charmap' codec can't encode character '\u2713' in position 31: character maps to <undefined>
+
+ERROR:    Application startup failed. Exiting.
+WARNING:  WatchFiles detected changes in 'backend\main.py'. Reloading...
+INFO:     Started server process [34776]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
