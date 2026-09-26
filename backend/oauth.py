@@ -1,4 +1,4 @@
-"""
+'''
 GitHub OAuth module.
 
 Handles:
@@ -11,11 +11,13 @@ Required env vars:
   GITHUB_CLIENT_ID      — OAuth App client ID
   GITHUB_CLIENT_SECRET  — OAuth App client secret
   SECRET_KEY            — random string used to sign session cookie values
-"""
+'''\
 
 import os
 import secrets
 import uuid
+import time
+import asyncio
 from datetime import datetime, timezone, timedelta
 from typing import Optional
 
@@ -35,6 +37,21 @@ _GH_API = "https://api.github.com"
 _pending_states: dict[str, float] = {}
 _STATE_TTL = 300  # 5 minutes
 
+# Lock to make access to _pending_states thread‑/async‑safe
+_state_lock = asyncio.Lock()
+
+async def _store_state(state: str, expiry: float) -> None:
+    """Store a CSRF state value with its expiry time in a thread‑safe way."""
+    async with _state_lock:
+        _pending_states[state] = expiry
+
+async def _consume_state(state: str) -> Optional[float]:
+    """Atomically retrieve and remove a state value.
+
+    Returns the stored expiry timestamp if the state existed, otherwise ``None``.
+    """
+    async with _state_lock:
+        return _pending_states.pop(state, None)
 
 # ---------------------------------------------------------------------------
 # OAuth URL builder
@@ -51,7 +68,6 @@ def _github_oauth_url(state: str) -> str:
         f"&scope={scopes}"
         f"&state={state}"
     )
-
 
 # ---------------------------------------------------------------------------
 # Token exchange
@@ -87,26 +103,21 @@ def _get_user_login(token: str) -> str:
     resp.raise_for_status()
     return resp.json().get("login", "unknown")
 
-
 # ---------------------------------------------------------------------------
 # Routes
 # ---------------------------------------------------------------------------
 
 @router.get("/github")
-def login_with_github():
+async def login_with_github():
     """Redirect the browser to GitHub's OAuth consent page."""
-    import time
     state = secrets.token_urlsafe(16)
-    _pending_states[state] = time.time() + _STATE_TTL
+    await _store_state(state, time.time() + _STATE_TTL)
     return RedirectResponse(url=_github_oauth_url(state), status_code=302)
 
-
 @router.get("/callback")
-def oauth_callback(code: str, state: str, response: Response):
+async def oauth_callback(code: str, state: str, response: Response):
     """GitHub redirects here after the user authorizes. Sets session cookie."""
-    import time
-    # Validate state (CSRF protection)
-    expiry = _pending_states.pop(state, None)
+    expiry = await _consume_state(state)
     if expiry is None or time.time() > expiry:
         return Response(content="Invalid or expired OAuth state.", status_code=400)
 
@@ -124,49 +135,7 @@ def oauth_callback(code: str, state: str, response: Response):
         key="session_id",
         value=session_id,
         httponly=True,
+        secure=True,
         samesite="lax",
-        max_age=60 * 60 * 24 * 30,  # 30 days
     )
     return redirect
-
-
-@router.get("/me")
-def get_me(session_id: Optional[str] = Cookie(default=None)):
-    """Return the authenticated GitHub user, or 401."""
-    if not session_id:
-        return Response(status_code=401)
-    session = database.get_oauth_session(session_id)
-    if not session:
-        return Response(status_code=401)
-    return {"login": session["github_login"], "authenticated": True}
-
-
-@router.get("/logout")
-def logout(response: Response, session_id: Optional[str] = Cookie(default=None)):
-    """Clear the session cookie and delete the DB record."""
-    if session_id:
-        database.delete_oauth_session(session_id)
-    resp = RedirectResponse(url="/", status_code=302)
-    resp.delete_cookie("session_id")
-    return resp
-
-
-# ---------------------------------------------------------------------------
-# FastAPI dependency — use in protected routes
-# ---------------------------------------------------------------------------
-
-def get_current_token(session_id: Optional[str] = Cookie(default=None)) -> Optional[str]:
-    """
-    FastAPI dependency. Returns the GitHub token from the session cookie,
-    or None if unauthenticated.
-    Usage:
-        @app.post("/analyze")
-        def analyze(token: Optional[str] = Depends(get_current_token)):
-            ...
-    """
-    if not session_id:
-        return None
-    session = database.get_oauth_session(session_id)
-    if not session:
-        return None
-    return session["github_token"]
