@@ -9,6 +9,7 @@ Routes:
   GET    /repo/workspace
   GET    /workspaces
   DELETE /workspaces/{repo:path}
+  GET    /repo/pulls
   GET    /repo/file-content
   POST   /repo/file-content
   POST   /repo/full-scan
