@@ -450,24 +450,13 @@ export function DiffViewer({
     e.preventDefault();
     if (!activeFile) return;
 
-    const hasEdits = fileContent !== originalContent;
-    const hasAiFix = Boolean(aiResult && aiResult.revised && aiResult.revised !== originalContent);
-    const contentToCommit = hasEdits ? fileContent : (hasAiFix ? aiResult!.revised : fileContent);
+    // Use AI fix if available and not yet applied, otherwise active buffer
+    const contentToCommit = (aiResult?.revised && aiResult.revised !== fileContent)
+      ? aiResult.revised
+      : fileContent;
 
-    if (contentToCommit === originalContent) {
-      setPrSuccessResult({
-        created: false,
-        pr_url: "",
-        pr_number: null,
-        branch: prBranch,
-        mode: "no_changes",
-        message: "No code changes detected. Edit the code in the editor or generate an AI fix first so GitHub has changes to review.",
-      });
-      return;
-    }
-
-    if (!hasEdits && hasAiFix) {
-      setFileContent(aiResult!.revised);
+    if (aiResult?.revised && aiResult.revised !== fileContent) {
+      setFileContent(aiResult.revised);
     }
 
     setIsSubmittingPr(true);
@@ -1029,17 +1018,7 @@ export function DiffViewer({
             ) : (
               <form onSubmit={handleSubmitPr} className="space-y-3 text-xs font-mono">
                 {/* Changes Validation Status */}
-                {fileContent === originalContent && (!aiResult || !aiResult.revised || aiResult.revised === originalContent) ? (
-                  <div className="p-3 rounded-lg bg-amber-500/10 border border-amber-500/30 text-amber-300 text-xs font-mono space-y-1">
-                    <div className="font-semibold flex items-center gap-1.5">
-                      <AlertTriangle className="w-3.5 h-3.5 text-amber-400 shrink-0" />
-                      <span>No Code Changes Detected</span>
-                    </div>
-                    <p className="text-[11px] text-zinc-400 leading-relaxed">
-                      GitHub requires at least 1 commit between branches. Edit the code in the editor or generate an AI fix first so GitHub has changes to compare.
-                    </p>
-                  </div>
-                ) : fileContent === originalContent && aiResult?.revised && aiResult.revised !== originalContent ? (
+                {aiResult?.revised && aiResult.revised !== fileContent ? (
                   <div className="p-3 rounded-lg bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs font-mono flex items-center gap-2">
                     <Sparkles className="w-3.5 h-3.5 text-cyan-400 shrink-0" />
                     <span>AI-generated fix will be automatically committed and submitted with this PR!</span>
@@ -1047,7 +1026,7 @@ export function DiffViewer({
                 ) : (
                   <div className="p-2.5 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-[11px] font-mono flex items-center gap-2">
                     <CheckCircle2 className="w-3.5 h-3.5 shrink-0" />
-                    <span>File modifications staged for commit.</span>
+                    <span>Active file buffer staged for commit & Pull Request creation.</span>
                   </div>
                 )}
 
@@ -1100,7 +1079,7 @@ export function DiffViewer({
                   </button>
                   <button
                     type="submit"
-                    disabled={isSubmittingPr || (fileContent === originalContent && (!aiResult?.revised || aiResult.revised === originalContent))}
+                    disabled={isSubmittingPr || !activeFile}
                     className="px-4 py-1.5 rounded-lg bg-emerald-500 hover:bg-emerald-400 text-black font-bold flex items-center gap-1.5 cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     {isSubmittingPr ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <GitPullRequest className="w-3.5 h-3.5" />}

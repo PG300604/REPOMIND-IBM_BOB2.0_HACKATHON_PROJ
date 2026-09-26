@@ -344,12 +344,18 @@ def _try_push_local_git(
                     cwd=local_root,
                 )
 
-        # Commit
-        subprocess.run(
+        # Commit (fallback to --allow-empty if working tree already matches)
+        commit_res = subprocess.run(
             ["git", "commit", "-m", f"{title}\n\n{body}"],
             capture_output=True,
             cwd=local_root,
         )
+        if commit_res.returncode != 0:
+            subprocess.run(
+                ["git", "commit", "--allow-empty", "-m", f"{title}\n\n{body}"],
+                capture_output=True,
+                cwd=local_root,
+            )
 
         # Push to origin
         push_res = subprocess.run(
