@@ -29,10 +29,9 @@ _PR_ACTIONS = {"opened", "synchronize", "reopened"}
 
 def _verify_signature(payload_bytes: bytes, sig_header: str | None) -> None:
     """Raise HTTPException 401 if the webhook signature is invalid."""
-    secret = os.environ.get("GITHUB_WEBHOOK_SECRET", "")
+    secret = os.environ.get("GITHUB_WEBHOOK_SECRET")
     if not secret:
-        # If no secret configured, skip verification (dev mode only)
-        return
+        raise RuntimeError("GITHUB_WEBHOOK_SECRET must be set for webhook verification")
 
     if not sig_header or not sig_header.startswith("sha256="):
         raise HTTPException(status_code=401, detail="Missing webhook signature")
@@ -123,13 +122,15 @@ async def _handle_pr_event(payload: dict) -> None:
     except Exception as e:
         print(f"[webhook] DB save failed (non-fatal): {e}")
 
-    # Post PR comment
+    # Post PR comment with deep-link into RepoMind Studio
     comment_body = format_pr_comment(
         risk_level=llm_result.risk_level,
         summary=llm_result.summary,
         changed_symbols=symbols,
         impacted_files=impacted,
         missing_tests=llm_result.missing_tests,
+        repo=repo_full,
+        pr_number=pr_number,
     )
     try:
         post_pr_comment(owner, repo_name, pr_number, comment_body, token)
@@ -186,4 +187,4 @@ async def webhook(
     elif event == "ping":
         print("[webhook] Ping received — webhook configured correctly ✓")
 
-    return {"ok": True}
+    return {"ok": True}

@@ -21,8 +21,11 @@ class AnalyzeRequest(BaseModel):
 
 class AnalyzeResponse(BaseModel):
     risk_level: str                   # low | medium | high | unknown
+    risk_score: Optional[int] = 0
     summary: str
-    impacted_files: list[str]
-    missing_tests: list[str]
-    changed_files: list[str]
-    changed_symbols: list[str]
+    impacted_files: list[str] = []
+    missing_tests: list[str] = []
+    changed_files: list[str] = []
+    changed_symbols: list[str] = []
+    suggestions: list[str] = []
+    raw_diff: Optional[str] = None

@@ -1,6 +1,6 @@
 # 🛡️ PR Risk Radar v2
 
-A full-stack PR review assistant that works like CodeRabbit — install it on your repo, and it automatically analyzes every pull request, posts a risk summary comment, and gives you a full IDE-style web interface.
+An autonomous full-stack AI Pull Request engineering assistant and AST Blast Radius engine — install it on your repo, and it automatically analyzes pull requests, calculates deep dependency blast radii, and provides an Obsidian-themed IDE studio.
 
 **No personal tokens ever asked from users.** Uses GitHub App installation tokens and GitHub OAuth.
 

@@ -15,6 +15,7 @@ class ChangedFile:
     path: str
     added_lines: list[str] = field(default_factory=list)
     removed_lines: list[str] = field(default_factory=list)
+    hunk_headers: list[str] = field(default_factory=list)
 
 
 # ---------------------------------------------------------------------------
@@ -49,8 +50,14 @@ def parse_diff(diff_text: str) -> list[ChangedFile]:
         if current is None:
             continue
 
+        # Hunk header context (e.g. @@ ... @@ def func_name)
+        if line.startswith("@@"):
+            parts = line.split("@@")
+            if len(parts) >= 3 and parts[2].strip():
+                current.hunk_headers.append(parts[2].strip())
+
         # Added lines (but not the +++ header)
-        if line.startswith("+") and not line.startswith("+++"):
+        elif line.startswith("+") and not line.startswith("+++"):
             current.added_lines.append(line[1:])  # strip leading +
 
         # Removed lines (but not the --- header)
@@ -96,17 +103,21 @@ _SYMBOL_PATTERNS: list[re.Pattern] = [
 _MIN_SYMBOL_LEN = 3
 
 
-def extract_symbols(changed_files: list[ChangedFile]) -> list[str]:
+def extract_symbols(changed_files: list[ChangedFile] | str) -> list[str]:
     """
     Return a deduplicated list of symbol names found in the added or removed
-    lines of the changed files.  Only identifier-like names of 3+ characters
-    are returned to reduce noise.
+    lines of the changed files. Only identifier-like names of 3+ characters
+    are returned to reduce noise. Accepts either ChangedFile list or raw diff string.
     """
+    if isinstance(changed_files, str):
+        changed_files = parse_diff(changed_files)
+
     seen: set[str] = set()
     results: list[str] = []
 
     for cf in changed_files:
-        for line in cf.added_lines + cf.removed_lines:
+        lines_to_check = cf.added_lines + cf.removed_lines + getattr(cf, "hunk_headers", [])
+        for line in lines_to_check:
             for pattern in _SYMBOL_PATTERNS:
                 m = pattern.search(line)
                 if m:

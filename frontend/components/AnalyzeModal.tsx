@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { analyzePR, ApiError, type AnalyzeResponse } from "@/lib/api";
+import { GitPullRequest, X, AlertTriangle, Loader2 } from "lucide-react";
+import { SiGithub } from "react-icons/si";
 
 interface AnalyzeModalProps {
   open: boolean;
@@ -24,7 +26,7 @@ export function AnalyzeModal({ open, onClose, onResult }: AnalyzeModalProps) {
     setRequiresAuth(false);
 
     if (!prUrl.trim() && !diff.trim()) {
-      setError("Provide a PR URL or paste a raw diff.");
+      setError("Provide a GitHub PR URL or paste a unified diff.");
       return;
     }
 
@@ -41,13 +43,13 @@ export function AnalyzeModal({ open, onClose, onResult }: AnalyzeModalProps) {
         localStorage.setItem("pr_radar_last_pr_url", prUrl.trim());
       }
 
-      onResult(result, prUrl.trim() || "Raw Diff", diff.trim());
+      onResult(result, prUrl.trim() || "Unified Diff", diff.trim());
       onClose();
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.requiresAuth) {
           setRequiresAuth(true);
-          setError("This repository requires authentication.");
+          setError("This repository requires GitHub authentication.");
         } else {
           setError(err.message);
         }
@@ -60,7 +62,6 @@ export function AnalyzeModal({ open, onClose, onResult }: AnalyzeModalProps) {
   }
 
   function handleConnectGitHub() {
-    // Store current PR URL before redirecting
     if (prUrl.trim()) {
       localStorage.setItem("pr_radar_last_pr_url", prUrl.trim());
     }
@@ -69,98 +70,110 @@ export function AnalyzeModal({ open, onClose, onResult }: AnalyzeModalProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-sm p-4 select-none"
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
-      <div className="bg-[#161b22] border border-[#30363d] rounded-xl w-[480px] shadow-2xl overflow-hidden">
+      <div className="bg-[#0c0d12] border border-white/[0.08] rounded-2xl w-full max-w-[500px] shadow-2xl overflow-hidden font-sans">
+        
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-4 border-b border-[#21262d]">
-          <h3 className="text-sm font-semibold text-[#c9d1d9]">🛡️ Analyze Pull Request</h3>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06] bg-[#090a0f]">
+          <div className="flex items-center gap-2.5">
+            <div className="w-7 h-7 rounded-lg bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400">
+              <GitPullRequest className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-mono font-bold tracking-wider uppercase text-zinc-100">
+                Analyze Pull Request
+              </h3>
+              <p className="text-[11px] font-mono text-zinc-500">
+                Inspect AST blast radius and risk score
+              </p>
+            </div>
+          </div>
+
           <button
             onClick={onClose}
-            className="text-[#8b949e] hover:text-[#c9d1d9] text-lg leading-none bg-none border-none cursor-pointer"
+            className="w-7 h-7 rounded-lg flex items-center justify-center text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.05] transition-colors"
           >
-            ✕
+            <X className="w-4 h-4" />
           </button>
         </div>
 
-        {/* Body */}
+        {/* Form Body */}
         <form onSubmit={handleSubmit}>
-          <div className="px-5 py-5 flex flex-col gap-3.5">
-            {/* PR URL */}
+          <div className="p-5 flex flex-col gap-4">
+            
+            {/* PR URL input */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#8b949e]">
-                PR URL{" "}
-                <span className="text-[#484f58] font-normal">or</span>{" "}
-                <code className="bg-[#0d1117] px-1 py-0.5 rounded text-[11px]">owner/repo#123</code>
+              <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400 flex items-center justify-between">
+                <span>Pull Request URL</span>
+                <span className="text-zinc-600 font-normal">or owner/repo#123</span>
               </label>
               <input
                 type="text"
                 value={prUrl}
                 onChange={(e) => setPrUrl(e.target.value)}
                 placeholder="https://github.com/owner/repo/pull/42"
-                className="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-xs text-[#c9d1d9] outline-none focus:border-[#58a6ff] transition-colors placeholder:text-[#484f58]"
+                className="bg-[#07080a] border border-white/[0.08] rounded-lg px-3 py-2 text-xs font-mono text-zinc-100 outline-none focus:border-amber-400/70 transition-colors placeholder:text-zinc-600"
               />
             </div>
 
-            {/* Raw diff */}
+            {/* Raw Unified Diff */}
             <div className="flex flex-col gap-1.5">
-              <label className="text-xs font-medium text-[#8b949e]">
-                Raw Diff{" "}
-                <span className="text-[#484f58] font-normal">(optional — paste unified diff directly)</span>
+              <label className="text-[11px] font-mono font-semibold uppercase tracking-wider text-zinc-400 flex items-center justify-between">
+                <span>Raw Diff</span>
+                <span className="text-zinc-600 font-normal">Optional</span>
               </label>
               <textarea
                 value={diff}
                 onChange={(e) => setDiff(e.target.value)}
-                placeholder={"diff --git a/src/auth.py b/src/auth.py\n--- a/src/auth.py\n+++ b/src/auth.py\n..."}
+                placeholder={"diff --git a/backend/main.py b/backend/main.py\n--- a/backend/main.py\n+++ b/backend/main.py\n@@ -10,4 +10,6 @@\n..."}
                 rows={5}
-                className="bg-[#0d1117] border border-[#30363d] rounded-md px-3 py-2 text-xs text-[#c9d1d9] font-mono outline-none focus:border-[#58a6ff] transition-colors resize-y placeholder:text-[#484f58]"
+                className="bg-[#07080a] border border-white/[0.08] rounded-lg px-3 py-2 text-xs font-mono text-zinc-200 outline-none focus:border-amber-400/70 transition-colors resize-y placeholder:text-zinc-700 leading-relaxed"
               />
             </div>
 
-            {/* Error */}
+            {/* Error Message */}
             {error && (
-              <div className="bg-[#2d0f0f] border border-[#5c1a1a] rounded-md px-3 py-2 text-xs text-[#f85149]">
-                ⚠ {error}
+              <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-3 text-xs text-rose-300 flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
+                <span className="font-mono text-[11px]">{error}</span>
               </div>
             )}
 
-            {/* Connect GitHub CTA */}
+            {/* Connect GitHub OAuth */}
             {requiresAuth && (
               <button
                 type="button"
                 onClick={handleConnectGitHub}
-                className="flex items-center justify-center gap-2 w-full py-2 rounded-md border border-[#30363d] text-xs text-[#c9d1d9] hover:border-[#8b949e] hover:bg-[#21262d] transition-colors"
+                className="flex items-center justify-center gap-2 w-full py-2.5 rounded-lg border border-white/[0.10] bg-white/[0.03] hover:bg-white/[0.06] text-xs font-mono text-zinc-200 transition-colors"
               >
-                <svg viewBox="0 0 16 16" width="14" height="14" fill="currentColor">
-                  <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.013 8.013 0 0 0 16 8c0-4.42-3.58-8-8-8Z" />
-                </svg>
-                Connect GitHub Account
+                <SiGithub className="w-4 h-4 text-zinc-100" />
+                <span>Connect GitHub Account</span>
               </button>
             )}
           </div>
 
-          {/* Footer */}
-          <div className="flex justify-end gap-2 px-5 py-3.5 border-t border-[#21262d]">
+          {/* Footer Actions */}
+          <div className="flex items-center justify-end gap-2.5 px-5 py-3.5 border-t border-white/[0.06] bg-[#090a0f]">
             <button
               type="button"
               onClick={onClose}
-              className="px-3.5 py-1.5 rounded-md border border-[#30363d] text-xs text-[#8b949e] hover:border-[#8b949e] hover:text-[#c9d1d9] transition-colors bg-none cursor-pointer"
+              className="px-3.5 py-1.5 rounded-lg border border-white/[0.08] text-xs font-mono text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.04] transition-colors"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={loading}
-              className="flex items-center gap-2 px-4 py-1.5 rounded-md bg-[#238636] border border-[#2ea043] text-xs font-semibold text-white hover:bg-[#2ea043] transition-colors cursor-pointer disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-1.5 rounded-lg bg-amber-500 hover:bg-amber-400 text-black text-xs font-mono font-bold transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-md shadow-amber-500/20"
             >
-              {loading && (
-                <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              )}
-              {loading ? "Analyzing…" : "⚡ Analyze PR"}
+              {loading && <Loader2 className="w-3.5 h-3.5 animate-spin" />}
+              <span>{loading ? "Analyzing..." : "Analyze Pull Request"}</span>
             </button>
           </div>
         </form>
+
       </div>
     </div>
   );

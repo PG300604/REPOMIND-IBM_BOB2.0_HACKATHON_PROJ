@@ -3,6 +3,7 @@
 import { cn } from "@/lib/utils";
 import type { AnalyzeResponse, AuthUser } from "@/lib/api";
 import Image from "next/image";
+import { GitBranch, GitPullRequest, LogOut, CheckCircle2 } from "lucide-react";
 
 interface StatusBarProps {
   analysis: AnalyzeResponse | null;
@@ -11,59 +12,98 @@ interface StatusBarProps {
   onLogout: () => void;
 }
 
-const RISK_COLORS: Record<string, string> = {
-  low:     "text-[#3fb950]",
-  medium:  "text-[#e3b341]",
-  high:    "text-[#f85149]",
-  unknown: "text-[#8b949e]",
+const RISK_BADGE: Record<string, { color: string; bg: string }> = {
+  low: { color: "text-emerald-400", bg: "bg-emerald-500/10 border-emerald-500/30" },
+  medium: { color: "text-amber-400", bg: "bg-amber-500/10 border-amber-500/30" },
+  high: { color: "text-rose-400", bg: "bg-rose-500/10 border-rose-500/30" },
+  unknown: { color: "text-zinc-400", bg: "bg-zinc-500/10 border-zinc-500/30" },
 };
 
 export function StatusBar({ analysis, prLabel, user, onLogout }: StatusBarProps) {
   const risk = analysis?.risk_level?.toLowerCase() ?? null;
+  const badgeStyle = risk ? RISK_BADGE[risk] : null;
 
   return (
-    <div className="flex items-center px-3 gap-4 bg-[#1f6feb] text-white text-[11px] h-full overflow-hidden whitespace-nowrap">
-      {/* Repo / PR label */}
-      <div className="flex items-center gap-1.5 opacity-90">
-        <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
-          <path d="M8 0a8.2 8.2 0 0 1 .701.031C9.444.095 9.99.645 10.16 1.29l.288 1.107c.018.066.079.158.212.224.231.114.454.243.668.386.123.082.233.09.299.071l1.103-.303c.644-.176 1.392.021 1.82.63.27.385.506.792.704 1.218.315.675.111 1.422-.364 1.891l-.814.806c-.049.048-.098.147-.088.294.016.257.016.515 0 .772-.01.147.038.246.088.294l.814.806c.475.469.679 1.216.364 1.891a7.977 7.977 0 0 1-.704 1.217c-.428.61-1.176.807-1.82.63l-1.102-.302c-.067-.019-.177-.011-.3.071a5.909 5.909 0 0 1-.668.386c-.133.066-.194.158-.211.224l-.29 1.106c-.168.646-.715 1.196-1.458 1.26a8.006 8.006 0 0 1-1.402 0c-.743-.064-1.289-.614-1.458-1.26l-.289-1.106c-.018-.066-.079-.158-.212-.224a5.738 5.738 0 0 1-.668-.386c-.123-.082-.233-.09-.299-.071l-1.103.303c-.644.176-1.392-.021-1.82-.63a8.12 8.12 0 0 1-.704-1.218c-.315-.675-.111-1.422.363-1.891l.815-.806c.05-.048.098-.147.088-.294a6.214 6.214 0 0 1 0-.772c.01-.147-.038-.246-.088-.294l-.815-.806C.635 6.045.431 5.298.746 4.623a7.92 7.92 0 0 1 .704-1.217c.428-.61 1.176-.807 1.82-.63l1.103.303c.066.019.176.011.299-.071.214-.143.437-.272.668-.386.133-.066.194-.158.211-.224l.29-1.106C6.717.645 7.263.095 8.006.031A8.19 8.19 0 0 1 8 0Z" />
-        </svg>
-        <span>PR Risk Radar</span>
+    <div className="flex items-center justify-between px-3 h-full bg-[#07080a] border-t border-white/[0.06] text-zinc-400 text-[11px] font-mono select-none overflow-hidden">
+      
+      {/* Left side: Git branch & System status */}
+      <div className="flex items-center gap-3">
+        <div className="flex items-center gap-1.5 text-zinc-300">
+          <GitBranch className="w-3.5 h-3.5 text-amber-400" />
+          <span className="font-mono text-xs">main</span>
+        </div>
+
+        <span className="text-zinc-700">|</span>
+
+        {analysis ? (
+          <div className="flex items-center gap-2 text-zinc-300">
+            <GitPullRequest className="w-3.5 h-3.5 text-amber-400" />
+            <span className="truncate max-w-[220px] text-zinc-200">{prLabel}</span>
+            <span className="text-zinc-600">·</span>
+            <span className="text-zinc-400">{analysis.changed_files.length} changed</span>
+            {analysis.impacted_files.length > 0 && (
+              <>
+                <span className="text-zinc-600">·</span>
+                <span className="text-rose-400 font-semibold">{analysis.impacted_files.length} blast radius</span>
+              </>
+            )}
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 text-zinc-500">
+            <span>Ready</span>
+            <span className="text-zinc-700">·</span>
+            <span className="text-zinc-600">Press N to analyze PR</span>
+          </div>
+        )}
       </div>
 
-      {/* PR info */}
-      {analysis && (
-        <div className="flex items-center gap-1.5 opacity-90">
-          <svg viewBox="0 0 16 16" width="12" height="12" fill="currentColor">
-            <path d="M1.5 3.25a2.25 2.25 0 1 1 3 2.122v5.256a2.251 2.251 0 1 1-1.5 0V5.372A2.25 2.25 0 0 1 1.5 3.25Zm5.677-.177L9.573.677A.25.25 0 0 1 10 .854V2.5h.538A1.962 1.962 0 0 1 12.5 4.462v9.538a2.25 2.25 0 1 1-1.5 0V4.462a.462.462 0 0 0-.462-.462H10v1.646a.25.25 0 0 1-.427.177L7.177 3.427a.25.25 0 0 1 0-.354Z" />
-          </svg>
-          <span className="truncate max-w-[240px]">{prLabel}</span>
-          <span className="opacity-60">·</span>
-          <span>{analysis.changed_files.length} file(s)</span>
+      {/* Right side: Port telemetry, Risk badge & User info */}
+      <div className="flex items-center gap-3">
+        {/* Local Services */}
+        <div className="hidden md:flex items-center gap-2 text-[10px] text-zinc-500">
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>:8000</span>
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+            <span>:3000</span>
+          </div>
         </div>
-      )}
 
-      {/* Risk level — pushed right */}
-      {risk && (
-        <span className={cn("ml-auto font-bold", RISK_COLORS[risk] || "text-[#8b949e]")}>
-          ⬤ {risk.toUpperCase()}
-        </span>
-      )}
+        {risk && badgeStyle && (
+          <div className={cn("px-2 py-0.5 rounded border text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5", badgeStyle.bg, badgeStyle.color)}>
+            <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
+            <span>{risk}</span>
+          </div>
+        )}
 
-      {/* User avatar */}
-      {user && (
-        <div className="flex items-center gap-1.5 ml-2 cursor-pointer" onClick={onLogout} title="Click to disconnect">
-          <Image
-            src={`https://avatars.githubusercontent.com/${user.login}?s=24`}
-            alt={user.login}
-            width={18}
-            height={18}
-            className="rounded-full"
-            unoptimized
-          />
-          <span className="text-white opacity-90">{user.login}</span>
-        </div>
-      )}
+        {user ? (
+          <div 
+            onClick={onLogout}
+            className="flex items-center gap-2 bg-white/[0.04] hover:bg-white/[0.08] px-2 py-0.5 rounded cursor-pointer transition-colors text-zinc-300"
+            title="Click to disconnect"
+          >
+            <Image
+              src={`https://avatars.githubusercontent.com/${user.login}?s=24`}
+              alt={user.login}
+              width={16}
+              height={16}
+              unoptimized
+              className="rounded-full"
+            />
+            <span className="text-xs font-mono">{user.login}</span>
+            <LogOut className="w-3 h-3 text-zinc-500 hover:text-rose-400" />
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 text-zinc-500 text-[10px]">
+            <span>UTF-8</span>
+            <span>·</span>
+            <span>LF</span>
+          </div>
+        )}
+      </div>
+
     </div>
   );
 }

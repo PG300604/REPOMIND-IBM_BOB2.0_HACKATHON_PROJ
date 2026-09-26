@@ -67,6 +67,17 @@ installations = Table(
     Column("created_at",      DateTime, default=lambda: datetime.now(timezone.utc)),
 )
 
+repo_workspaces = Table(
+    "repo_workspaces", metadata,
+    Column("id",                String(36), primary_key=True, default=lambda: str(uuid.uuid4())),
+    Column("repo",              String(255), unique=True, nullable=False),
+    Column("branch",            String(100), default="main"),
+    Column("files_count",       Integer, default=0),
+    Column("open_prs_count",    Integer, default=0),
+    Column("open_issues_count", Integer, default=0),
+    Column("last_opened_at",    DateTime, default=lambda: datetime.now(timezone.utc)),
+)
+
 
 def init_db() -> None:
     """Create all tables if they don't exist. Safe to call multiple times."""
@@ -213,3 +224,85 @@ def get_installation(installation_id: int) -> dict | None:
             select(installations).where(installations.c.installation_id == installation_id)
         ).mappings().first()
     return dict(row) if row else None
+
+
+# ---------------------------------------------------------------------------
+# Workspace Sessions CRUD
+# ---------------------------------------------------------------------------
+
+def upsert_workspace(
+    repo: str,
+    branch: str = "main",
+    files_count: int = 0,
+    open_prs_count: int = 0,
+    open_issues_count: int = 0,
+) -> dict:
+    """Save or update an active repository workspace session."""
+    now = datetime.now(timezone.utc)
+    with engine.begin() as conn:
+        existing = conn.execute(
+            select(repo_workspaces).where(repo_workspaces.c.repo == repo)
+        ).first()
+
+        if existing:
+            conn.execute(
+                update(repo_workspaces)
+                .where(repo_workspaces.c.repo == repo)
+                .values(
+                    branch=branch,
+                    files_count=files_count,
+                    open_prs_count=open_prs_count,
+                    open_issues_count=open_issues_count,
+                    last_opened_at=now,
+                )
+            )
+            row_id = existing.id
+        else:
+            row_id = str(uuid.uuid4())
+            conn.execute(
+                insert(repo_workspaces).values(
+                    id=row_id,
+                    repo=repo,
+                    branch=branch,
+                    files_count=files_count,
+                    open_prs_count=open_prs_count,
+                    open_issues_count=open_issues_count,
+                    last_opened_at=now,
+                )
+            )
+
+    return {
+        "id": row_id,
+        "repo": repo,
+        "branch": branch,
+        "files_count": files_count,
+        "open_prs_count": open_prs_count,
+        "open_issues_count": open_issues_count,
+        "last_opened_at": now.isoformat(),
+    }
+
+
+def list_workspaces(limit: int = 10) -> list[dict]:
+    """Return past repository sessions ordered by last opened timestamp."""
+    with engine.connect() as conn:
+        rows = conn.execute(
+            select(repo_workspaces)
+            .order_by(repo_workspaces.c.last_opened_at.desc())
+            .limit(limit)
+        ).mappings().all()
+
+    results = []
+    for r in rows:
+        item = dict(r)
+        if isinstance(item.get("last_opened_at"), datetime):
+            item["last_opened_at"] = item["last_opened_at"].isoformat()
+        results.append(item)
+    return results
+
+
+def delete_workspace(repo: str) -> bool:
+    """Delete a workspace session from history."""
+    with engine.begin() as conn:
+        conn.execute(delete(repo_workspaces).where(repo_workspaces.c.repo == repo))
+    return True
+
