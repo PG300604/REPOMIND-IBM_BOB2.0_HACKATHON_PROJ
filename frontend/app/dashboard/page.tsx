@@ -23,6 +23,7 @@ import {
   listAnalyses,
   getAnalysis,
   getRepoWorkspace,
+  getRepoPullRequests,
   analyzePR,
   type AnalyzeResponse,
   type AnalysisRecord,
@@ -80,36 +81,31 @@ export default function Dashboard() {
   const [initialPrData, setInitialPrData]               = useState<{ title?: string; body?: string; branch?: string } | null>(null);
   const [panelDefaultTab, setPanelDefaultTab]           = useState<"pr" | "audit">("pr");
 
-  // Active Pull Requests state
-  const [pullRequests, setPullRequests] = useState<PullRequestItem[]>([
-    {
-      number: 42,
-      title: "feat(engine): AST symbol dependency traversal & blast radius calculator",
-      user: "PG300604",
-      state: "open",
-      created_at: "2026-09-26T07:15:00Z",
-      head_branch: "feat/ast-engine",
-      base_branch: "main",
-    },
-    {
-      number: 39,
-      title: "fix(auth): harden session cookie security & rate-limiting guards",
-      user: "PG300604",
-      state: "open",
-      created_at: "2026-09-25T14:30:00Z",
-      head_branch: "fix/cookie-security",
-      base_branch: "main",
-    },
-  ]);
+  // ── Workspace & Repo Session State ─────────────────────────────────────
+  const [workspace, setWorkspace]             = useState<RepoWorkspaceData | null>(null);
+  const [launcherLoading, setLauncherLoading] = useState(false);
+  const [launcherStep, setLauncherStep]       = useState("");
+
+  // Active Pull Requests state (Synced with GitHub)
+  const [pullRequests, setPullRequests] = useState<PullRequestItem[]>([]);
+  const [isRefreshingPRs, setIsRefreshingPRs] = useState<boolean>(false);
 
   const handleAddPR = useCallback((pr: PullRequestItem) => {
     setPullRequests((prev) => [pr, ...prev.filter((p) => p.number !== pr.number)]);
   }, []);
 
-  // ── Workspace & Repo Session State ─────────────────────────────────────
-  const [workspace, setWorkspace]             = useState<RepoWorkspaceData | null>(null);
-  const [launcherLoading, setLauncherLoading] = useState(false);
-  const [launcherStep, setLauncherStep]       = useState("");
+  const refreshPullRequests = useCallback(async (repoName?: string) => {
+    const targetRepo = repoName || workspace?.repo || "PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ";
+    setIsRefreshingPRs(true);
+    try {
+      const prs = await getRepoPullRequests(targetRepo, "all");
+      setPullRequests(prs);
+    } catch (e) {
+      console.warn("Could not sync pull requests:", e);
+    } finally {
+      setIsRefreshingPRs(false);
+    }
+  }, [workspace?.repo]);
 
   // ── Handle analysis result ─────────────────────────────────────────────
   const handleResult = useCallback(
@@ -138,9 +134,7 @@ export default function Dashboard() {
       setLauncherStep("Syncing pull requests and open issues...");
       setWorkspace(data);
       sessionStorage.setItem("repomind_active_workspace", JSON.stringify(data));
-      if (data.pull_requests && data.pull_requests.length > 0) {
-        setPullRequests(data.pull_requests);
-      }
+      setPullRequests(data.pull_requests || []);
 
       if (data.files.length > 0) {
         const initialTabs = data.files.slice(0, 3);
@@ -245,11 +239,17 @@ export default function Dashboard() {
         try {
           const parsed = JSON.parse(stored);
           setWorkspace(parsed);
+          if (parsed.pull_requests?.length > 0) {
+            setPullRequests(parsed.pull_requests);
+          }
+          refreshPullRequests(parsed.repo);
           if (parsed.files?.length > 0) {
             setTabs(parsed.files.slice(0, 3));
             setActiveTab(parsed.files[0] ?? null);
           }
         } catch {}
+      } else {
+        loadWorkspace("PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ", "main");
       }
     }
 
@@ -260,7 +260,7 @@ export default function Dashboard() {
         setModalOpen(true);
       }
     }
-  }, [loadWorkspace]);
+  }, [loadWorkspace, refreshPullRequests]);
 
   // ── Keyboard shortcuts ─────────────────────────────────────────────────
   useEffect(() => {
@@ -409,6 +409,8 @@ export default function Dashboard() {
       onHistoryClick={handleHistoryClick}
       onToggleReviewPanel={() => setPanelOpen((p) => !p)}
       panelOpen={panelOpen}
+      onRefreshPRs={refreshPullRequests}
+      isRefreshingPRs={isRefreshingPRs}
     />
   );
 

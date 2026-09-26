@@ -309,6 +309,21 @@ def delete_workspace(repo: str):
     return {"deleted": deleted, "repo": repo}
 
 
+@app.get("/repo/pulls")
+def get_repo_pulls(
+    repo: str,
+    state: str = "all",
+    session_token: Optional[str] = Depends(get_current_token),
+):
+    """Fetch active and recent pull requests for a repository."""
+    token = session_token or os.getenv("GITHUB_TOKEN", "")
+    parts = repo.strip().split("/")
+    if len(parts) != 2:
+        raise HTTPException(status_code=422, detail="repo must be in 'owner/repo' format")
+    owner, repo_name = parts
+    return github_client.get_repo_pull_requests(owner, repo_name, state=state, token=token)
+
+
 # ---------------------------------------------------------------------------
 # File Content (Reading & Saving)
 # ---------------------------------------------------------------------------

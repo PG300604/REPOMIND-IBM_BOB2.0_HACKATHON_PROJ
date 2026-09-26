@@ -51,6 +51,8 @@ interface FileTreeProps {
   onHistoryClick: (repo: string, prNumber: number) => void;
   onToggleReviewPanel: () => void;
   panelOpen: boolean;
+  onRefreshPRs?: () => void;
+  isRefreshingPRs?: boolean;
 }
 
 export function FileTree({
@@ -73,6 +75,8 @@ export function FileTree({
   onHistoryClick,
   onToggleReviewPanel,
   panelOpen,
+  onRefreshPRs,
+  isRefreshingPRs = false,
 }: FileTreeProps) {
   const [search, setSearch] = useState("");
   const [isCreatingFile, setIsCreatingFile] = useState(false);
@@ -245,17 +249,33 @@ export function FileTree({
               <span>Pull Requests ({pullRequests.length})</span>
             </div>
 
-            {/* + Add PR Trigger */}
-            <button
-              onClick={() => {
-                setIsAddingPR((prev) => !prev);
-                setOpenSections((prev) => ({ ...prev, prs: true }));
-              }}
-              className="p-1 rounded text-zinc-500 hover:text-amber-400 hover:bg-white/[0.05] transition-colors cursor-pointer"
-              title="Add Pull Request to list"
-            >
-              <Plus className="w-3.5 h-3.5" />
-            </button>
+            {/* Actions: Sync & Add */}
+            <div className="flex items-center gap-1">
+              {onRefreshPRs && (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onRefreshPRs();
+                  }}
+                  className="p-1 rounded text-zinc-500 hover:text-amber-400 hover:bg-white/[0.05] transition-colors cursor-pointer"
+                  title="Sync real PRs from GitHub"
+                >
+                  <RefreshCw className={cn("w-3 h-3", isRefreshingPRs && "animate-spin text-amber-400")} />
+                </button>
+              )}
+              <button
+                type="button"
+                onClick={() => {
+                  setIsAddingPR((prev) => !prev);
+                  setOpenSections((prev) => ({ ...prev, prs: true }));
+                }}
+                className="p-1 rounded text-zinc-500 hover:text-amber-400 hover:bg-white/[0.05] transition-colors cursor-pointer"
+                title="Add Pull Request to list"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+            </div>
           </div>
 
           {openSections["prs"] && (
@@ -264,74 +284,13 @@ export function FileTree({
               {isAddingPR && (
                 <div className="p-2.5 rounded-lg bg-[#10131e] border border-amber-400/40 space-y-2 font-mono text-xs">
                   <div className="flex items-center justify-between text-[11px] text-amber-300 font-bold uppercase">
-                    <span>Add Pull Request</span>
+                    <span>Add / Track Pull Request</span>
                     <button
                       onClick={() => setIsAddingPR(false)}
                       className="text-zinc-500 hover:text-zinc-300"
                     >
                       ✕
                     </button>
-                  </div>
-
-                  {/* Quick Preset Buttons */}
-                  <div className="flex flex-col gap-1 pb-1">
-                    <span className="text-[10px] text-zinc-400 font-semibold uppercase">Quick Add PR:</span>
-                    <div className="flex flex-wrap gap-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddPR?.({
-                            number: 42,
-                            title: "feat(engine): AST symbol dependency traversal & blast radius calculator",
-                            user: "PG300604",
-                            state: "open",
-                            created_at: new Date().toISOString(),
-                            head_branch: "feat/ast-engine",
-                            base_branch: "main",
-                          });
-                          setIsAddingPR(false);
-                        }}
-                        className="px-2 py-0.5 rounded bg-white/[0.04] hover:bg-amber-400/20 text-zinc-300 hover:text-amber-300 border border-white/[0.06] text-[10px] cursor-pointer"
-                      >
-                        + PR #42 (AST Radius)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddPR?.({
-                            number: 39,
-                            title: "fix(auth): harden session cookie security & rate-limiting guards",
-                            user: "PG300604",
-                            state: "open",
-                            created_at: new Date().toISOString(),
-                            head_branch: "fix/cookie-security",
-                            base_branch: "main",
-                          });
-                          setIsAddingPR(false);
-                        }}
-                        className="px-2 py-0.5 rounded bg-white/[0.04] hover:bg-amber-400/20 text-zinc-300 hover:text-amber-300 border border-white/[0.06] text-[10px] cursor-pointer"
-                      >
-                        + PR #39 (Security)
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          onAddPR?.({
-                            number: 45,
-                            title: "perf(db): sqlite query index optimization & telemetric monitoring",
-                            user: "PG300604",
-                            state: "open",
-                            created_at: new Date().toISOString(),
-                            head_branch: "perf/sqlite-index",
-                            base_branch: "main",
-                          });
-                          setIsAddingPR(false);
-                        }}
-                        className="px-2 py-0.5 rounded bg-white/[0.04] hover:bg-amber-400/20 text-zinc-300 hover:text-amber-300 border border-white/[0.06] text-[10px] cursor-pointer"
-                      >
-                        + PR #45 (DB Speed)
-                      </button>
-                    </div>
                   </div>
 
                   <form
@@ -351,7 +310,7 @@ export function FileTree({
                       setNewPrNum((prev) => prev + 1);
                       setIsAddingPR(false);
                     }}
-                    className="space-y-1.5 pt-1 border-t border-white/[0.06]"
+                    className="space-y-1.5 pt-1"
                   >
                     <div className="flex gap-2">
                       <input
@@ -389,8 +348,18 @@ export function FileTree({
                 </div>
               )}
               {pullRequests.length === 0 ? (
-                <div className="text-[11px] font-mono text-zinc-600 py-1 pl-2 italic">
-                  No open PRs found in repo.
+                <div className="text-[11px] font-mono text-zinc-500 py-2 px-2 flex flex-col gap-1 items-start">
+                  <span>No pull requests found.</span>
+                  {onRefreshPRs && (
+                    <button
+                      type="button"
+                      onClick={onRefreshPRs}
+                      className="text-[10px] text-amber-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-2.5 h-2.5" />
+                      <span>Sync real PRs from GitHub</span>
+                    </button>
+                  )}
                 </div>
               ) : (
                 pullRequests.map((pr) => (
@@ -399,9 +368,19 @@ export function FileTree({
                     className="p-2.5 rounded-lg bg-[#0c0d14] hover:bg-[#12141f] border border-white/[0.06] hover:border-amber-400/40 transition-colors flex flex-col gap-1.5"
                   >
                     <div className="flex items-start justify-between gap-1">
-                      <span className="font-mono text-xs font-bold text-amber-300">
-                        #{pr.number}
-                      </span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-xs font-bold text-amber-300">
+                          #{pr.number}
+                        </span>
+                        <span className={cn(
+                          "px-1.5 py-0.2 rounded text-[9px] font-mono uppercase font-bold",
+                          pr.state === "open"
+                            ? "bg-emerald-500/10 text-emerald-400 border border-emerald-500/20"
+                            : "bg-purple-500/10 text-purple-400 border border-purple-500/20"
+                        )}>
+                          {pr.state || "open"}
+                        </span>
+                      </div>
                       <span className="text-[10px] font-mono text-zinc-500 truncate">
                         @{pr.user}
                       </span>
@@ -412,17 +391,18 @@ export function FileTree({
                     </div>
 
                     <div className="flex items-center justify-between pt-1">
-                      <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[100px]">
-                        {pr.head_branch || "feature"}
+                      <span className="text-[10px] font-mono text-zinc-500 truncate max-w-[120px]" title={pr.head_branch}>
+                        {pr.head_branch || "main"}
                       </span>
 
                       {/* Specialized in-context Analyze PR button */}
                       <button
+                        type="button"
                         onClick={(e) => {
                           e.stopPropagation();
                           onSelectPR?.(pr);
                         }}
-                        className="px-2.5 py-1 rounded bg-amber-400/10 hover:bg-amber-400/25 text-amber-300 border border-amber-400/30 text-[10px] font-mono font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
+                        className="px-2 py-0.5 rounded bg-amber-400/10 hover:bg-amber-400/25 text-amber-300 border border-amber-400/30 text-[10px] font-mono font-semibold flex items-center gap-1 transition-colors cursor-pointer shadow-sm"
                         title={`Analyze Pull Request #${pr.number}`}
                       >
                         <Sparkles className="w-3 h-3 text-amber-400" />

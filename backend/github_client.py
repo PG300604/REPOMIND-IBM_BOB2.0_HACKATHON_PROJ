@@ -212,9 +212,9 @@ def get_repo_info(owner: str, repo: str, token: str = "") -> dict:
     }
 
 
-def get_repo_pull_requests(owner: str, repo: str, state: str = "open", token: str = "") -> list[dict]:
+def get_repo_pull_requests(owner: str, repo: str, state: str = "all", token: str = "") -> list[dict]:
     """Fetch recent pull requests for a repository."""
-    url = f"{_GH_API}/repos/{owner}/{repo}/pulls?state={state}&per_page=15"
+    url = f"{_GH_API}/repos/{owner}/{repo}/pulls?state={state}&per_page=30"
     try:
         resp = httpx.get(url, headers=_auth_headers(token), timeout=20)
         if resp.status_code != 200:

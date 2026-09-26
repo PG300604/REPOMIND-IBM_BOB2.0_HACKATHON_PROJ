@@ -205,6 +205,13 @@ export async function getRepoWorkspace(repo: string, branch = "main"): Promise<R
   return handleResponse<RepoWorkspaceData>(res)
 }
 
+export async function getRepoPullRequests(repo: string, state = "all"): Promise<PullRequestItem[]> {
+  const res = await fetch(`${BASE}/repo/pulls?repo=${encodeURIComponent(repo)}&state=${encodeURIComponent(state)}`, {
+    credentials: "include",
+  })
+  return handleResponse<PullRequestItem[]>(res)
+}
+
 export async function listWorkspaces(): Promise<WorkspaceSession[]> {
   const res = await fetch(`${BASE}/workspaces`, { credentials: "include" })
   return handleResponse<WorkspaceSession[]>(res)
