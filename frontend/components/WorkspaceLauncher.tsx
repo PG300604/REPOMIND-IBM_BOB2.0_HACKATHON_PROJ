@@ -36,7 +36,7 @@ export function WorkspaceLauncher({
   loading,
   loadingStep,
 }: WorkspaceLauncherProps) {
-  const [repoInput, setRepoInput] = useState(DEFAULT_REPO);
+  const [repoInput, setRepoInput] = useState("");
   const [branchInput, setBranchInput] = useState("main");
   const [sessions, setSessions] = useState<WorkspaceSession[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -150,7 +150,7 @@ export function WorkspaceLauncher({
                     type="text"
                     value={repoInput}
                     onChange={(e) => setRepoInput(e.target.value)}
-                    placeholder="e.g. PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ"
+                    placeholder="e.g. facebook/react or https://github.com/pallets/flask"
                     disabled={loading}
                     className="w-full h-11 pl-10 pr-4 rounded-xl bg-[#07080a] border border-white/[0.08] text-xs font-mono text-zinc-100 placeholder:text-zinc-600 outline-none focus:border-amber-400/70 transition-colors"
                   />

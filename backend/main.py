@@ -23,6 +23,7 @@ Routes:
 """
 
 import os
+import re
 from typing import Optional
 
 import httpx
@@ -32,6 +33,19 @@ from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
 load_dotenv()
+
+def _normalize_repo(repo: str) -> tuple[str, str, str]:
+    """Clean and parse repository into (owner, repo_name, canonical_name)."""
+    cleaned = repo.strip()
+    cleaned = re.sub(r"^(?:https?://)?(?:www\.)?github\.com/", "", cleaned)
+    cleaned = cleaned.rstrip("/")
+    if cleaned.endswith(".git"):
+        cleaned = cleaned[:-4]
+    parts = cleaned.split("/")
+    if len(parts) < 2 or not parts[0] or not parts[1]:
+        raise HTTPException(status_code=422, detail="Repository must be in 'owner/repo' or GitHub URL format")
+    owner, repo_name = parts[0], parts[1]
+    return owner, repo_name, f"{owner}/{repo_name}"
 
 from backend import database, diff_parser, dependency_finder, github_client, llm_client, github_app
 from backend.models import AnalyzeRequest, AnalyzeResponse
@@ -223,10 +237,7 @@ def get_repo_workspace(
     Saves or refreshes the active workspace session in SQLite.
     """
     token = session_token or os.getenv("GITHUB_TOKEN", "")
-    parts = repo.strip().split("/")
-    if len(parts) != 2:
-        raise HTTPException(status_code=422, detail="repo must be in 'owner/repo' format")
-    owner, repo_name = parts
+    owner, repo_name, canonical_repo = _normalize_repo(repo)
 
     try:
         info = github_client.get_repo_info(owner, repo_name, token=token)
@@ -243,7 +254,7 @@ def get_repo_workspace(
 
         # Upsert into database
         session = database.upsert_workspace(
-            repo=repo,
+            repo=canonical_repo,
             branch=target_branch,
             files_count=len(files),
             open_prs_count=len(prs),
@@ -251,7 +262,7 @@ def get_repo_workspace(
         )
 
         return {
-            "repo": repo,
+            "repo": canonical_repo,
             "info": info,
             "files": files,
             "pull_requests": prs,
@@ -319,10 +330,7 @@ def get_repo_pulls(
 ):
     """Fetch active and recent pull requests for a repository."""
     token = session_token or os.getenv("GITHUB_TOKEN", "")
-    parts = repo.strip().split("/")
-    if len(parts) != 2:
-        raise HTTPException(status_code=422, detail="repo must be in 'owner/repo' format")
-    owner, repo_name = parts
+    owner, repo_name, _ = _normalize_repo(repo)
     return github_client.get_repo_pull_requests(owner, repo_name, state=state, token=token)
 
 
@@ -366,23 +374,21 @@ def get_file_content(
             raise HTTPException(status_code=500, detail=str(e))
 
     # Fallback to GitHub raw content
-    parts = repo.strip().split("/")
-    if len(parts) == 2:
-        owner, repo_name = parts
+    try:
+        owner, repo_name, canonical_repo = _normalize_repo(repo)
         url = f"https://raw.githubusercontent.com/{owner}/{repo_name}/{branch}/{path}"
-        try:
-            resp = httpx.get(url, headers=github_client._auth_headers(token), timeout=15)
-            if resp.status_code == 200:
-                return {
-                    "repo": repo,
-                    "path": path,
-                    "branch": branch,
-                    "content": resp.text,
-                    "source": "github_raw",
-                    "size": len(resp.text),
-                }
-        except Exception:
-            pass
+        resp = httpx.get(url, headers=github_client._auth_headers(token), timeout=15)
+        if resp.status_code == 200:
+            return {
+                "repo": canonical_repo,
+                "path": path,
+                "branch": branch,
+                "content": resp.text,
+                "source": "github_raw",
+                "size": len(resp.text),
+            }
+    except Exception:
+        pass
 
     raise HTTPException(status_code=404, detail=f"File not found: {path}")
 

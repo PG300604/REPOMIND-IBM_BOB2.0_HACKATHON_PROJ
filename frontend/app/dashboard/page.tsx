@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useCallback, useState } from "react";
+import { useEffect, useCallback, useState, useRef } from "react";
 import { Shell } from "@/components/Shell";
 import { FileTree } from "@/components/FileTree";
 import { DiffViewer } from "@/components/DiffViewer";
@@ -52,6 +52,37 @@ import {
   FolderGit2
 } from "lucide-react";
 
+function getInitialOpenTabs(files: string[]): { tabs: string[]; active: string | null } {
+  if (!files || files.length === 0) return { tabs: [], active: null };
+  const meaningful = files.filter((f) => {
+    const parts = f.split("/");
+    const name = parts[parts.length - 1];
+    if (name.startsWith(".")) return false;
+    if (parts.some((p) => p.startsWith("."))) return false;
+    if (name.includes(".env")) return false;
+    if (name.endsWith(".lock") || name.endsWith("-lock.json")) return false;
+    if (name.includes(".git")) return false;
+    return true;
+  });
+
+  const entry =
+    meaningful.find(
+      (f) =>
+        f.endsWith("main.py") ||
+        f.endsWith("app.py") ||
+        f.endsWith("index.ts") ||
+        f.endsWith("index.tsx") ||
+        f.endsWith("page.tsx") ||
+        f.endsWith("index.js") ||
+        f.endsWith("README.md")
+    ) || meaningful[0];
+
+  if (entry) {
+    return { tabs: [entry], active: entry };
+  }
+  return { tabs: [], active: null };
+}
+
 export default function Dashboard() {
   // ── State ──────────────────────────────────────────────────────────────
   const [modalOpen, setModalOpen]       = useState(false);
@@ -64,13 +95,9 @@ export default function Dashboard() {
   // Navigation View State
   const [activeRail, setActiveRail]     = useState<"code" | "catalog" | "db" | "git" | "flow" | "cloud" | "tools">("code");
   
-  // Tabs matching open files
-  const [tabs, setTabs]                 = useState<string[]>([
-    "backend/main.py",
-    "backend/database.py",
-    "requirements.txt",
-  ]);
-  const [activeTab, setActiveTab]       = useState<string | null>("backend/main.py");
+  // Tabs matching open files (starts empty or with clean entrypoint, never dotfiles)
+  const [tabs, setTabs]                 = useState<string[]>([]);
+  const [activeTab, setActiveTab]       = useState<string | null>(null);
   const [viewMode, setViewMode]         = useState<"desktop" | "mobile">("desktop");
   const [user, setUser]                 = useState<AuthUser | null>(null);
   const [history, setHistory]           = useState<AnalysisRecord[]>([]);
@@ -133,14 +160,13 @@ export default function Dashboard() {
       const data = await getRepoWorkspace(repo, branch);
       setLauncherStep("Syncing pull requests and open issues...");
       setWorkspace(data);
+      sessionStorage.removeItem("repomind_switching_workspace");
       sessionStorage.setItem("repomind_active_workspace", JSON.stringify(data));
       setPullRequests(data.pull_requests || []);
 
-      if (data.files.length > 0) {
-        const initialTabs = data.files.slice(0, 3);
-        setTabs(initialTabs);
-        setActiveTab(initialTabs[0] ?? null);
-      }
+      const { tabs: initialTabs, active: initialActive } = getInitialOpenTabs(data.files || []);
+      setTabs(initialTabs);
+      setActiveTab(initialActive);
 
       if (prNumber) {
         setLauncherStep(`Analyzing Pull Request #${prNumber}...`);
@@ -223,7 +249,12 @@ export default function Dashboard() {
   }, []);
 
   // ── Boot ──────────────────────────────────────────────────────────────
+  const hasBootstrappedRef = useRef(false);
+
   useEffect(() => {
+    if (hasBootstrappedRef.current) return;
+    hasBootstrappedRef.current = true;
+
     getMe().then(setUser).catch(() => {});
     listAnalyses(20).then(setHistory).catch(() => {});
 
@@ -234,8 +265,9 @@ export default function Dashboard() {
     if (repoParam) {
       loadWorkspace(repoParam, params.get("branch") || "main", prParam ? parseInt(prParam) : undefined);
     } else {
+      const isSwitching = sessionStorage.getItem("repomind_switching_workspace") === "true";
       const stored = sessionStorage.getItem("repomind_active_workspace");
-      if (stored) {
+      if (stored && !isSwitching) {
         try {
           const parsed = JSON.parse(stored);
           setWorkspace(parsed);
@@ -243,12 +275,11 @@ export default function Dashboard() {
             setPullRequests(parsed.pull_requests);
           }
           refreshPullRequests(parsed.repo);
-          if (parsed.files?.length > 0) {
-            setTabs(parsed.files.slice(0, 3));
-            setActiveTab(parsed.files[0] ?? null);
-          }
+          const { tabs: restoredTabs, active: restoredActive } = getInitialOpenTabs(parsed.files || []);
+          setTabs(restoredTabs);
+          setActiveTab(restoredActive);
         } catch {}
-      } else {
+      } else if (!isSwitching) {
         loadWorkspace("PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ", "main");
       }
     }
@@ -389,8 +420,13 @@ export default function Dashboard() {
       onSelectPR={handleSelectPR}
       onAddPR={handleAddPR}
       onSwitchWorkspace={() => {
-        setWorkspace(null);
+        sessionStorage.setItem("repomind_switching_workspace", "true");
         sessionStorage.removeItem("repomind_active_workspace");
+        setWorkspace(null);
+        setTabs([]);
+        setActiveTab(null);
+        setAnalysis(null);
+        setRawDiff("");
       }}
       onTriggerFullScan={handleTriggerFullScan}
       onCreateNewFile={handleCreateNewFile}

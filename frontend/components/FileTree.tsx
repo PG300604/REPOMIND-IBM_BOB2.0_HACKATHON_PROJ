@@ -97,11 +97,8 @@ export function FileTree({
     "history": false,
   });
 
-  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({
-    "backend": true,
-    "frontend": true,
-    "components": true,
-  });
+  // All folders closed by default; user clicks to expand
+  const [openFolders, setOpenFolders] = useState<Record<string, boolean>>({});
 
   const toggleSection = (sec: string) => {
     setOpenSections((prev) => ({ ...prev, [sec]: !prev[sec] }));
@@ -605,9 +602,9 @@ export function FileTree({
 
           {openSections["files"] && (
             <div className="space-y-1 mt-1 pl-1">
-              {/* Directory Groups */}
+              {/* Directory Groups: closed by default unless searched or expanded */}
               {Object.entries(fileGroups.groups).map(([folder, files]) => {
-                const isFolderOpen = openFolders[folder] ?? true;
+                const isFolderOpen = search ? true : Boolean(openFolders[folder]);
                 const matchedFiles = search
                   ? files.filter((f) => f.toLowerCase().includes(search.toLowerCase()))
                   : files;
