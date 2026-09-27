@@ -18,7 +18,7 @@
 
 **An enterprise-grade, autonomous AI Pull Request engineering platform that parses AST symbol diffs, computes multi-hop dependency blast radii, performs pre-commit code integrity checks, and executes automated PR reviews via an official GitHub App (`repomind-reviewer[bot]`) — seamlessly paired with an Obsidian-themed Studio IDE for 1-click remediation.**
 
-[Live Demo](https://repomind-ibm-bob-2-0-hackathon-proj.vercel.app) · [Install GitHub App](https://github.com/apps/repomind-reviewer) · [Live Review Showcase (PR #6)](https://github.com/PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ/pull/6) · [Report Issue](https://github.com/PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ/issues)
+[Live Demo](https://repomind-ibm-bob-2-0-hackathon-proj.vercel.app) · [Hackathon Submission & Visual Showcase](docs/HACKATHON_SUBMISSION.md) · [Install GitHub App](https://github.com/apps/repomind-reviewer) · [Live Review Showcase (PR #6)](https://github.com/PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ/pull/6) · [Report Issue](https://github.com/PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ/issues)
 
 </div>
 
@@ -26,6 +26,7 @@
 
 ## Table of Contents
 
+- [Hackathon Submission Showcase (16 Screenshots)](docs/HACKATHON_SUBMISSION.md)
 - [Overview & What Sets RepoMind Apart](#overview--what-sets-repomind-apart)
 - [Key Features](#key-features)
 - [System Architecture](#system-architecture)
