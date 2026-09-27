@@ -5,6 +5,7 @@
 ### Autonomous AI Code Review & AST Blast Radius Engine
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![GitHub App: RepoMind-Reviewer](https://img.shields.io/badge/GitHub_App-RepoMind--Reviewer-238636?logo=github&logoColor=white)](https://github.com/apps/repomind-reviewer)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12+-3776AB?logo=python&logoColor=white)](https://python.org)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16-000000?logo=next.js&logoColor=white)](https://nextjs.org)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.115+-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
