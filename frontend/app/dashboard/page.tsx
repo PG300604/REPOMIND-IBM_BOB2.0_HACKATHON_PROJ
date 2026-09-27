@@ -279,6 +279,15 @@ export default function Dashboard() {
     const params = new URLSearchParams(window.location.search);
     const repoParam = params.get("repo");
     const prParam = params.get("pr");
+    const actionParam = params.get("action");
+    const promptParam = params.get("prompt");
+
+    if (actionParam === "fix" && promptParam) {
+      setInitialAiInstruction(promptParam);
+      setPanelOpen(true);
+      setPanelDefaultTab("pr");
+      setActiveRail("code");
+    }
 
     if (repoParam) {
       loadWorkspace(repoParam, params.get("branch") || "main", prParam ? parseInt(prParam) : undefined);

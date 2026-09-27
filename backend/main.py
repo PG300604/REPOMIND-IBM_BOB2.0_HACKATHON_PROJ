@@ -719,12 +719,19 @@ def simulate_review_endpoint(
 
     posted = False
     error_msg = None
-    if payload.post_to_github and token:
-        try:
-            github_app.post_pr_comment(owner, repo_name, payload.pr_number, comment_markdown, token)
-            posted = True
-        except Exception as e:
-            error_msg = str(e)
+    if payload.post_to_github:
+        # Prioritize official GitHub App bot installation token so comment is authored by RepoMind[bot]
+        bot_token = github_app.get_installation_token_for_repo(owner, repo_name)
+        active_token = bot_token or token or os.getenv("GITHUB_TOKEN", "")
+
+        if active_token:
+            try:
+                github_app.post_pr_comment(owner, repo_name, payload.pr_number, comment_markdown, active_token)
+                posted = True
+            except Exception as e:
+                error_msg = str(e)
+        else:
+            error_msg = "No GitHub App installation or authentication token available to post comment."
 
     return {
         "repo": payload.repo,

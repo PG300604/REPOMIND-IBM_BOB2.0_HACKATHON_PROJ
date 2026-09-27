@@ -58,35 +58,54 @@ export function WebhookSyncView({ repo }: WebhookSyncViewProps) {
     risk_level: "high",
     dashboard_deep_link: "http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42",
     posted: false,
-    comment_markdown: `## RepoMind Code Review & Risk Radar — **HIGH RISK**
-
-> Automated intelligent code review, AST dependency mapping, and test synthesis by **RepoMind**.
->
-> **[Open Interactive Diff & Risk Radar in RepoMind Studio →](http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42)**
+    comment_markdown: `| <img src="https://raw.githubusercontent.com/PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ/main/frontend/public/icon.png" width="42" height="42" alt="RepoMind" /> | ### **RepoMind** Autonomous Code Reviewer \`v0.2.0\` |
+| :--- | :--- |
+| **Risk Assessment**: 🔴 **\`HIGH RISK\`** | 🚀 **[Open Interactive Diff & Risk Radar in RepoMind Studio ➔](http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42)** |
 
 ---
 
-### Summary & Walkthrough
+### 📋 Summary & Walkthrough
 Pull request modifies critical authentication session handling and extracts AST symbols into downstream consumer modules. Validated against repository dependency graph.
 
-### Code Review & Architectural Impact
+### 🔍 Code Review & Architectural Impact
 - **Risk Classification**: \`HIGH\` based on symbol mutability and downstream dependencies.
 - **Modified Symbols**: \`4\` abstract syntax tree symbols identified.
 - **Blast Radius**: \`2\` downstream consumer files directly impacted.
 
-### Changed AST Symbols
+### 🧬 Changed AST Symbols
 \`AnalyzeResponse\` \`extract_symbols\` \`get_current_token\` \`verify_session\`
 
-### Downstream Blast Radius
-- \`frontend/components/ReviewPanel.tsx\` (requires regression verification)
-- \`backend/models.py\` (requires schema validation)
+### 💥 Downstream Blast Radius
+- ⚠️ \`frontend/components/ReviewPanel.tsx\` (requires regression verification)
+- ⚠️ \`backend/models.py\` (requires schema validation)
 
-### Recommended Missing Test Cases
+### 🧪 Recommended Missing Test Cases
 1. **Test session validation failure on forged JWT token**
 2. **Verify AST dependency traversal handles cyclical imports**
 
+### ⚡ Actionable AI Code Fix Prompts
+> **Run these prompts directly in RepoMind Studio to apply verified AST patches without breaking dependents:**
+
+- 🔧 **Fix 1: Safe AST Refactor & Input Boundary Guard**
+  \`\`\`text
+  Prompt: "Refactor modified symbols (AnalyzeResponse, extract_symbols) to introduce strict schema validation and prevent downstream regressions."
+  \`\`\`
+  👉 **[Apply Fix 1 Automatically in RepoMind Studio ➔](http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42&action=fix&prompt=Refactor%20modified%20symbols)**
+
+- 🧪 **Fix 2: Synthesize Missing Unit & Regression Tests**
+  \`\`\`text
+  Prompt: "Synthesize regression test suite for PR #42 covering: Test session validation failure on forged JWT token; Verify AST dependency traversal."
+  \`\`\`
+  👉 **[Generate & Commit Tests in RepoMind Studio ➔](http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42&action=fix&prompt=Synthesize%20regression%20test%20suite)**
+
+- 🛡️ **Fix 3: Anti-Truncation Code Integrity Patch**
+  \`\`\`text
+  Prompt: "Run RepoMind Dual-Tier AI Guardian to perform surgical search-and-replace, ensuring zero truncated placeholders."
+  \`\`\`
+  👉 **[Run Surgical Fix in RepoMind Studio ➔](http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42&action=fix&prompt=Run%20RepoMind%20Dual-Tier%20AI%20Guardian)**
+
 ---
-**[Launch Full Studio Workspace (PG300604/REPOMIND)]((http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42))** · _Powered by RepoMind Risk Intelligence Engine_`,
+👉 **[Launch Full Studio Workspace (PG300604/REPOMIND)](http://localhost:3000/dashboard?repo=PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ&pr=42)** · _Powered by RepoMind Risk Intelligence Engine_`,
   });
 
   const [copied, setCopied] = useState(false);
@@ -222,11 +241,11 @@ Pull request modifies critical authentication session handling and extracts AST 
             <div className="rounded-xl border border-white/[0.08] bg-[#07080a] overflow-hidden shadow-inner space-y-3">
               <div className="px-4 py-2.5 border-b border-white/[0.06] bg-[#090a0f] flex items-center justify-between">
                 <div className="flex items-center gap-2">
-                  <div className="w-6 h-6 rounded-md bg-amber-400/10 border border-amber-400/20 flex items-center justify-center text-amber-400 text-xs font-mono font-bold">
-                    bot
+                  <div className="w-6 h-6 rounded-md bg-white/[0.08] border border-white/[0.15] flex items-center justify-center text-white text-[10px] font-mono font-bold shadow-sm">
+                    RM
                   </div>
                   <span className="text-xs font-mono font-semibold text-zinc-200">
-                    repomind-reviewer[bot] commented on PR #{reviewResult.pr_number}
+                    RepoMind<span className="text-zinc-500 font-normal">[bot]</span> commented on PR #{reviewResult.pr_number}
                   </span>
                 </div>
 
