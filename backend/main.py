@@ -684,10 +684,12 @@ def simulate_review_endpoint(
     # Calculate blast radius using dependency finder
     impacted = []
     try:
-        from pathlib import Path
-        impacted = dependency_finder.find_affected_files(changed_files, repo_root=Path("."))
+        base_sha = github_client.get_pr_base_sha(owner, repo_name, payload.pr_number, token=token)
+        repo_files = github_client.get_repo_files(owner, repo_name, base_sha, token=token)
+        changed_paths = {cf.path for cf in changed_files}
+        impacted = dependency_finder.find_dependents(symbols, repo_files, changed_paths, token=token)
     except Exception as e:
-        print(f"[simulate-review] dependency scan fallback: {e}")
+        print(f"[simulate-review] dependency scan notice: {e}")
 
     analysis = llm_client.analyze(diff_snippet=raw_diff, symbols=symbols, impacted_files=impacted)
 

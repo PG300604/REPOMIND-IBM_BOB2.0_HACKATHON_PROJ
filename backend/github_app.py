@@ -17,6 +17,9 @@ import time
 import hmac
 from datetime import datetime, timezone
 from typing import Optional
+from dotenv import load_dotenv
+
+load_dotenv()
 
 import httpx
 import jwt  # PyJWT
@@ -106,11 +109,6 @@ def get_installation_token_for_repo(owner: str, repo: str) -> Optional[str]:
     installation access token. When comments are posted with this token, GitHub
     attributes them to 'RepoMind[bot]' with the App's verified avatar, NOT a personal account.
     """
-    app_id = os.environ.get("GITHUB_APP_ID")
-    raw_key = os.environ.get("GITHUB_APP_PRIVATE_KEY")
-    if not app_id or not raw_key:
-        return None
-
     try:
         jwt_token = _make_jwt()
         url = f"{_GH_API}/repos/{owner}/{repo}/installation"
