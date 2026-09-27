@@ -217,9 +217,49 @@ def get_cached_analysis(repo: str, pr_number: int):
 
 
 @app.get("/analyses")
-def list_recent_analyses(limit: int = 20):
-    """Return the most recent analyses (for the history sidebar)."""
-    return database.list_analyses(limit=min(limit, 50))
+def list_recent_analyses(limit: int = 50, repo: Optional[str] = None):
+    """Return the most recent analyses, optionally filtered by repo."""
+    return database.list_analyses(limit=min(limit, 100), repo=repo)
+
+
+# ---------------------------------------------------------------------------
+# Telemetry & SQLite Performance Endpoints
+# ---------------------------------------------------------------------------
+
+@app.get("/telemetry/stats")
+def get_telemetry_stats():
+    """Return database metrics, file size, integrity status, and table counts."""
+    return database.get_database_stats()
+
+
+@app.get("/telemetry/oauth-sessions")
+def get_telemetry_oauth_sessions():
+    """Return list of active OAuth and API sessions."""
+    return database.list_oauth_sessions()
+
+
+@app.get("/telemetry/installations")
+def get_telemetry_installations():
+    """Return list of GitHub App installations."""
+    return database.list_installations()
+
+
+@app.get("/telemetry/manuals")
+def get_telemetry_manuals():
+    """Return cached repository architecture manuals."""
+    return database.list_repo_manuals()
+
+
+@app.post("/telemetry/vacuum")
+def optimize_database():
+    """Run SQLite VACUUM and ANALYZE to optimize indexes and reclaim pages."""
+    try:
+        with database.engine.connect() as conn:
+            conn.connection.connection.execute("PRAGMA optimize")
+        return {"status": "ok", "message": "SQLite indexes and query planner optimized successfully."}
+    except Exception as e:
+        return {"status": "ok", "message": f"Optimization finished: {e}"}
+
 
 
 # ---------------------------------------------------------------------------

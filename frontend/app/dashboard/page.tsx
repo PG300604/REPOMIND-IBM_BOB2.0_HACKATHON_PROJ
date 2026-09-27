@@ -618,7 +618,7 @@ export default function Dashboard() {
         />
       )}
       {activeRail === "catalog" && <CatalogView repo={workspace?.repo} branch={workspace?.branch} />}
-      {activeRail === "db" && <DatabaseView />}
+      {activeRail === "db" && <DatabaseView activeRepo={workspace?.repo} />}
       {activeRail === "git" && (
         <GitBlastView
           analysis={analysis}

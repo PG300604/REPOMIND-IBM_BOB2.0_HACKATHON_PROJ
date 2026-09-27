@@ -106,8 +106,11 @@ export async function getAnalysis(
   return handleResponse<AnalysisRecord>(res)
 }
 
-export async function listAnalyses(limit = 20): Promise<AnalysisRecord[]> {
-  const res = await fetch(`${BASE}/analyses?limit=${limit}`, {
+export async function listAnalyses(limit = 50, repo?: string): Promise<AnalysisRecord[]> {
+  const url = repo 
+    ? `${BASE}/analyses?limit=${limit}&repo=${encodeURIComponent(repo)}`
+    : `${BASE}/analyses?limit=${limit}`
+  const res = await fetch(url, {
     credentials: "include",
   })
   return handleResponse<AnalysisRecord[]>(res)
@@ -411,5 +414,88 @@ export async function createPullRequest(data: CreatePrPayload): Promise<CreatePr
     }
   }
 }
+
+// ── SQLite Telemetry & Database Diagnostics ───────────────────────────────
+
+export interface DatabaseStats {
+  db_path: string
+  db_size_bytes: number
+  db_size_kb: number
+  page_count: number
+  page_size: number
+  journal_mode: string
+  integrity_check: string
+  table_counts: {
+    analyses: number
+    oauth_sessions: number
+    installations: number
+    repo_workspaces: number
+    repo_manuals: number
+  }
+  ai_engine: {
+    primary: string
+    fallback: string
+    guardian: string
+    status: string
+  }
+}
+
+export interface OAuthSessionRecord {
+  session_id: string
+  github_login: string
+  github_token_masked: string
+  created_at: string
+  expires_at?: string
+  status?: string
+}
+
+export interface InstallationRecord {
+  installation_id: number
+  account_login: string
+  account_type: string
+  created_at: string
+  status?: string
+}
+
+export interface RepoManualRecord {
+  repo: string
+  branch: string
+  size_bytes: number
+  updated_at: string
+}
+
+export async function getDatabaseStats(): Promise<DatabaseStats> {
+  const res = await fetch(`${BASE}/telemetry/stats`, { credentials: "include" })
+  return handleResponse<DatabaseStats>(res)
+}
+
+export async function getOAuthSessions(): Promise<OAuthSessionRecord[]> {
+  const res = await fetch(`${BASE}/telemetry/oauth-sessions`, { credentials: "include" })
+  return handleResponse<OAuthSessionRecord[]>(res)
+}
+
+export async function getInstallations(): Promise<InstallationRecord[]> {
+  const res = await fetch(`${BASE}/telemetry/installations`, { credentials: "include" })
+  return handleResponse<InstallationRecord[]>(res)
+}
+
+export async function getRepoManuals(): Promise<RepoManualRecord[]> {
+  const res = await fetch(`${BASE}/telemetry/manuals`, { credentials: "include" })
+  return handleResponse<RepoManualRecord[]>(res)
+}
+
+export async function getWorkspaces(): Promise<WorkspaceSession[]> {
+  const res = await fetch(`${BASE}/workspaces`, { credentials: "include" })
+  return handleResponse<WorkspaceSession[]>(res)
+}
+
+export async function optimizeDatabase(): Promise<{ status: string; message: string }> {
+  const res = await fetch(`${BASE}/telemetry/vacuum`, {
+    method: "POST",
+    credentials: "include",
+  })
+  return handleResponse<{ status: string; message: string }>(res)
+}
+
 
 
