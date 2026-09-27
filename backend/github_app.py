@@ -35,10 +35,21 @@ def _make_jwt() -> str:
     """Create a 9-minute GitHub App JWT signed with the private key."""
     app_id = os.environ.get("GITHUB_APP_ID", "")
     raw_key = os.environ.get("GITHUB_APP_PRIVATE_KEY", "")
-    if not app_id or not raw_key:
-        raise RuntimeError("GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY must be set")
+    pem_path = os.environ.get("GITHUB_APP_PRIVATE_KEY_PATH", "")
 
-    # .env stores the PEM with literal \n — convert to real newlines
+    if not raw_key and pem_path and os.path.exists(pem_path):
+        with open(pem_path, "r", encoding="utf-8") as f:
+            raw_key = f.read()
+    elif not raw_key:
+        default_pem = os.path.join(os.path.dirname(os.path.dirname(__file__)), "data", "github_app.pem")
+        if os.path.exists(default_pem):
+            with open(default_pem, "r", encoding="utf-8") as f:
+                raw_key = f.read()
+
+    if not app_id or not raw_key:
+        raise RuntimeError("GITHUB_APP_ID and GITHUB_APP_PRIVATE_KEY (or data/github_app.pem) must be set")
+
+    # If raw_key was in .env with literal \n — convert to real newlines
     private_key = raw_key.replace("\\n", "\n")
 
     now = int(time.time())
