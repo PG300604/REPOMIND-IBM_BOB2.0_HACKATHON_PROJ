@@ -16,7 +16,7 @@ import os
 from fastapi import APIRouter, Header, HTTPException, Request
 
 from backend import database, diff_parser, dependency_finder, github_client, llm_client
-from backend.github_app import format_pr_comment, get_installation_token, post_pr_comment
+from backend.github_app import format_pr_comment, get_installation_token, get_installation_token_for_repo, post_pr_comment
 
 router = APIRouter(tags=["webhook"])
 
@@ -63,14 +63,19 @@ async def _handle_pr_event(payload: dict) -> None:
     print(f"[webhook] PR #{pr_number} {action} in {owner}/{repo_name}")
 
     # Get installation token
-    if not install_id:
-        print("[webhook] No installation_id in payload — skipping")
-        return
+    token = None
+    if install_id:
+        try:
+            token = get_installation_token(install_id)
+        except Exception as e:
+            print(f"[webhook] Failed to get installation token for {install_id}: {e}")
+    if not token:
+        token = get_installation_token_for_repo(owner, repo_name)
+    if not token:
+        token = os.getenv("GITHUB_TOKEN", "")
 
-    try:
-        token = get_installation_token(install_id)
-    except Exception as e:
-        print(f"[webhook] Failed to get installation token: {e}")
+    if not token:
+        print("[webhook] No installation token or fallback token available — skipping")
         return
 
     # Fetch diff + repo files
