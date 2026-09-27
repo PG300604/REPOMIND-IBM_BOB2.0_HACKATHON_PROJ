@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   Cloud, 
   RefreshCw, 
@@ -34,16 +34,24 @@ const SAMPLE_EVENTS: WebhookEvent[] = [
   { id: "evt_103", event: "installation.created", repo: "PG300604/org", status: 200, hmacVerified: true, time: "1 hour ago" },
 ];
 
-export function WebhookSyncView() {
-  const [webhookUrl, setWebhookUrl] = useState("https://smee.io/PR_RISK_RADAR_LOCAL");
+interface WebhookSyncViewProps {
+  repo?: string;
+}
+
+export function WebhookSyncView({ repo }: WebhookSyncViewProps) {
+  const [webhookUrl, setWebhookUrl] = useState("https://smee.io/REPOMIND_APP_WEBHOOK");
   const [isSyncing, setIsSyncing] = useState(false);
   const [events, setEvents] = useState<WebhookEvent[]>(SAMPLE_EVENTS);
   const [statusMsg, setStatusMsg] = useState<string | null>(null);
 
   // Autonomous PR Review Simulator State
-  const [simRepo, setSimRepo] = useState("PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ");
+  const [simRepo, setSimRepo] = useState(repo || "PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ");
   const [simPrNumber, setSimPrNumber] = useState(42);
   const [isSimulating, setIsSimulating] = useState(false);
+
+  useEffect(() => {
+    if (repo) setSimRepo(repo);
+  }, [repo]);
   const [reviewResult, setReviewResult] = useState<AutonomousReviewResult | null>({
     repo: "PG300604/REPOMIND-IBM_BOB2.0_HACKATHON_PROJ",
     pr_number: 42,

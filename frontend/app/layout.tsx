@@ -2,8 +2,8 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "PR Risk Radar",
-  description: "AI-powered pull request risk analysis",
+  title: "RepoMind",
+  description: "Autonomous AI-Powered Codebase Intelligence & Autonomous PR Reviewer",
 };
 
 export default function RootLayout({

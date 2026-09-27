@@ -355,40 +355,24 @@ export default function Dashboard() {
       className="flex flex-col items-center pt-2 pb-2 gap-1.5 bg-[#07080a] h-full select-none"
       onDoubleClick={() => setSidebarOpen((s) => !s)}
     >
-      {/* Top Minimalist Logo: Links back to Landing */}
+      {/* Top Minimalist Logo: White font matching landing page REPOMIND */}
       <Link 
         href="/"
-        className="w-8 h-8 rounded-lg bg-white/[0.04] border border-white/[0.08] hover:border-amber-400/50 flex items-center justify-center mb-1 group cursor-pointer transition-colors"
+        className="w-8 h-8 rounded-lg bg-white/[0.05] hover:bg-white/[0.1] border border-white/[0.12] hover:border-white/30 flex items-center justify-center mb-1 group cursor-pointer transition-all shadow-sm"
         title="Return to RepoMind Landing Page"
       >
-        <span className="font-mono font-bold text-xs text-amber-400 group-hover:text-amber-300">
+        <span className="font-mono font-bold text-xs tracking-[0.1em] text-zinc-100 group-hover:text-white transition-colors">
           RM
         </span>
       </Link>
 
-      {/* Primary Rail Navigation */}
+      {/* Primary Rail Navigation (Topmost: Work tools) */}
       <RailBtn 
         title="VS Code Workspace Explorer & Diff" 
         active={activeRail === "code"} 
         onClick={() => { setActiveRail("code"); setSidebarOpen(true); }}
       >
         <FileCode className="w-4 h-4" />
-      </RailBtn>
-
-      <RailBtn 
-        title="AI Documentation & Catalog" 
-        active={activeRail === "catalog"} 
-        onClick={() => { setActiveRail("catalog"); }}
-      >
-        <BookOpen className="w-4 h-4" />
-      </RailBtn>
-
-      <RailBtn 
-        title="SQLite Database Analyzer" 
-        active={activeRail === "db"} 
-        onClick={() => { setActiveRail("db"); }}
-      >
-        <Database className="w-4 h-4" />
       </RailBtn>
 
       <RailBtn 
@@ -408,6 +392,14 @@ export default function Dashboard() {
       </RailBtn>
 
       <RailBtn 
+        title="AI Documentation & Catalog" 
+        active={activeRail === "catalog"} 
+        onClick={() => { setActiveRail("catalog"); }}
+      >
+        <BookOpen className="w-4 h-4" />
+      </RailBtn>
+
+      <RailBtn 
         title="GitHub Webhook Synchronizer" 
         active={activeRail === "cloud"} 
         onClick={() => { setActiveRail("cloud"); }}
@@ -417,6 +409,16 @@ export default function Dashboard() {
 
       <div className="flex-1" />
 
+      {/* Second to last: SQLite Telemetry & System Logic Analyzer */}
+      <RailBtn 
+        title="SQLite Telemetry & System Logic" 
+        active={activeRail === "db"} 
+        onClick={() => { setActiveRail("db"); }}
+      >
+        <Database className="w-4 h-4" />
+      </RailBtn>
+
+      {/* Last position: Tools, Model Config & Studio Guide */}
       <RailBtn 
         title="Tools, Model Config & Studio Guide" 
         active={activeRail === "tools"} 
@@ -642,7 +644,7 @@ export default function Dashboard() {
           files={workspace?.files || []}
         />
       )}
-      {activeRail === "cloud" && <WebhookSyncView />}
+      {activeRail === "cloud" && <WebhookSyncView repo={workspace?.repo} />}
       {activeRail === "tools" && <ToolsConfigView />}
     </div>
   );

@@ -680,13 +680,38 @@ def simulate_review_endpoint(
 
     changed_files = diff_parser.parse_diff(raw_diff) if raw_diff else []
     symbols = diff_parser.extract_symbols(changed_files)
-    analysis = llm_client.analyze(diff_snippet=raw_diff, symbols=symbols, impacted_files=[])
+
+    # Calculate blast radius using dependency finder
+    impacted = []
+    try:
+        from pathlib import Path
+        impacted = dependency_finder.find_affected_files(changed_files, repo_root=Path("."))
+    except Exception as e:
+        print(f"[simulate-review] dependency scan fallback: {e}")
+
+    analysis = llm_client.analyze(diff_snippet=raw_diff, symbols=symbols, impacted_files=impacted)
+
+    # Persist review scan to SQLite database
+    try:
+        database.save_analysis(
+            repo=payload.repo,
+            pr_number=payload.pr_number,
+            risk_level=analysis.risk_level,
+            summary=analysis.summary,
+            impacted_files=impacted,
+            missing_tests=analysis.missing_tests,
+            changed_files=[cf.file_path for cf in changed_files] if changed_files else [],
+            changed_symbols=symbols,
+            raw_diff=raw_diff,
+        )
+    except Exception as e:
+        print(f"[simulate-review] SQLite DB save failed (non-fatal): {e}")
 
     comment_markdown = github_app.format_pr_comment(
         risk_level=analysis.risk_level,
         summary=analysis.summary,
         changed_symbols=symbols,
-        impacted_files=[],
+        impacted_files=impacted,
         missing_tests=analysis.missing_tests,
         repo=payload.repo,
         pr_number=payload.pr_number,
