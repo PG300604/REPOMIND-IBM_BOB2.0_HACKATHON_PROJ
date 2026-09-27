@@ -1,11 +1,16 @@
 """
-RepoMind — FastAPI backend v0.2.0
+RepoMind — FastAPI backend v2.0.0
 
 Routes:
   GET    /health
   POST   /analyze
   GET    /analysis/{repo}/{pr_number}
   GET    /analyses
+  GET    /telemetry/stats
+  GET    /telemetry/oauth-sessions
+  GET    /telemetry/installations
+  GET    /telemetry/manuals
+  POST   /telemetry/vacuum
   GET    /repo/workspace
   GET    /workspaces
   DELETE /workspaces/{repo:path}
@@ -18,8 +23,8 @@ Routes:
   POST   /repo/create-pr
   POST   /github-app/simulate-review
   Sub-routers:
-    /auth/*    (OAuth authentication)
-    /webhook   (GitHub webhook event intake)
+    /auth/*    (OAuth authentication: /github, /callback, /me, /logout)
+    /webhook   (GitHub webhook event intake: ping, installation, pull_request)
 """
 
 import os
@@ -56,7 +61,7 @@ from backend.webhook import router as webhook_router
 # App setup
 # ---------------------------------------------------------------------------
 
-app = FastAPI(title="RepoMind Backend", version="0.2.0")
+app = FastAPI(title="RepoMind Backend", version="2.0.0")
 
 _origins = [
     "http://localhost:3000",
@@ -93,7 +98,7 @@ def startup():
 
 @app.get("/health")
 def health():
-    return {"status": "ok", "version": "0.2.0", "engine": "RepoMind AST"}
+    return {"status": "ok", "version": "2.0.0", "engine": "RepoMind AST"}
 
 
 # ---------------------------------------------------------------------------
