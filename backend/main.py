@@ -13,6 +13,7 @@ Routes:
   GET    /repo/file-content
   POST   /repo/file-content
   POST   /repo/full-scan
+  POST   /repo/generate-docs
   POST   /ai/generate-code
   POST   /repo/create-pr
   POST   /github-app/simulate-review
@@ -439,6 +440,30 @@ def run_full_scan(
         token=token,
     )
     return result
+
+
+class GenerateDocsPayload(BaseModel):
+    repo: str
+    branch: Optional[str] = "main"
+    force_refresh: Optional[bool] = False
+
+
+@app.post("/repo/generate-docs")
+def generate_docs_endpoint(
+    payload: GenerateDocsPayload,
+    session_token: Optional[str] = Depends(get_current_token),
+):
+    """
+    Generate an authoritative, non-editable User Manual and Architectural Blueprint
+    for the repository, covering structure, algorithms, data flows, and developer guides.
+    """
+    token = session_token or os.getenv("GITHUB_TOKEN", "")
+    return llm_client.generate_repository_manual(
+        repo_name=payload.repo,
+        branch=payload.branch or "main",
+        token=token,
+        force_refresh=payload.force_refresh or False,
+    )
 
 
 # ---------------------------------------------------------------------------

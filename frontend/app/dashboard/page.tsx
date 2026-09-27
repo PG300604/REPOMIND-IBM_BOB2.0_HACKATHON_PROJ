@@ -563,7 +563,7 @@ export default function Dashboard() {
           onPrCreated={handleAddPR}
         />
       )}
-      {activeRail === "catalog" && <CatalogView />}
+      {activeRail === "catalog" && <CatalogView repo={workspace?.repo} branch={workspace?.branch} />}
       {activeRail === "db" && <DatabaseView />}
       {activeRail === "git" && (
         <GitBlastView

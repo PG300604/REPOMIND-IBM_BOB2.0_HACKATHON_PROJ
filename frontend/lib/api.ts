@@ -212,6 +212,31 @@ export async function getRepoPullRequests(repo: string, state = "all"): Promise<
   return handleResponse<PullRequestItem[]>(res)
 }
 
+export interface RepoManualResult {
+  repo: string;
+  branch: string;
+  manual_content: string;
+  updated_at?: string;
+}
+
+export async function generateRepoManual(
+  repo: string,
+  branch = "main",
+  forceRefresh = false
+): Promise<RepoManualResult> {
+  const res = await fetch(`${BASE}/repo/generate-docs`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      repo,
+      branch,
+      force_refresh: forceRefresh,
+    }),
+  })
+  return handleResponse<RepoManualResult>(res)
+}
+
 export async function listWorkspaces(): Promise<WorkspaceSession[]> {
   const res = await fetch(`${BASE}/workspaces`, { credentials: "include" })
   return handleResponse<WorkspaceSession[]>(res)

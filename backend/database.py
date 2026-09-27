@@ -14,6 +14,7 @@ import os
 import uuid
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Optional
 
 from sqlalchemy import (
     Column, Integer, String, Text, DateTime,
@@ -76,6 +77,14 @@ repo_workspaces = Table(
     Column("open_prs_count",    Integer, default=0),
     Column("open_issues_count", Integer, default=0),
     Column("last_opened_at",    DateTime, default=lambda: datetime.now(timezone.utc)),
+)
+
+repo_manuals = Table(
+    "repo_manuals", metadata,
+    Column("repo",              String(255), primary_key=True),
+    Column("branch",            String(100), default="main"),
+    Column("manual_content",    Text, nullable=False),
+    Column("updated_at",        DateTime, default=lambda: datetime.now(timezone.utc)),
 )
 
 
@@ -305,4 +314,45 @@ def delete_workspace(repo: str) -> bool:
     with engine.begin() as conn:
         conn.execute(delete(repo_workspaces).where(repo_workspaces.c.repo == repo))
     return True
+
+
+# ---------------------------------------------------------------------------
+# Repository Manual & Architecture Documentation Cache
+# ---------------------------------------------------------------------------
+
+def get_cached_manual(repo: str) -> Optional[dict]:
+    """Retrieve cached repository architecture manual."""
+    with engine.connect() as conn:
+        row = conn.execute(select(repo_manuals).where(repo_manuals.c.repo == repo)).first()
+        if row:
+            return {
+                "repo": row.repo,
+                "branch": row.branch,
+                "manual_content": row.manual_content,
+                "updated_at": row.updated_at.isoformat() if row.updated_at else None,
+            }
+    return None
+
+
+def save_repo_manual(repo: str, branch: str, content: str) -> None:
+    """Persist or update repository architecture manual."""
+    now = datetime.now(timezone.utc)
+    with engine.begin() as conn:
+        existing = conn.execute(select(repo_manuals).where(repo_manuals.c.repo == repo)).first()
+        if existing:
+            conn.execute(
+                update(repo_manuals)
+                .where(repo_manuals.c.repo == repo)
+                .values(branch=branch, manual_content=content, updated_at=now)
+            )
+        else:
+            conn.execute(
+                insert(repo_manuals).values(
+                    repo=repo,
+                    branch=branch,
+                    manual_content=content,
+                    updated_at=now,
+                )
+            )
+
 
