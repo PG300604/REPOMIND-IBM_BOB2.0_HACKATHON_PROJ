@@ -25,6 +25,7 @@ import {
   getRepoWorkspace,
   getRepoPullRequests,
   analyzePR,
+  generateRepoManual,
   type AnalyzeResponse,
   type AnalysisRecord,
   type AuthUser,
@@ -156,6 +157,11 @@ export default function Dashboard() {
   const loadWorkspace = useCallback(async (repo: string, branch = "main", prNumber?: number) => {
     setLauncherLoading(true);
     setLauncherStep("Fetching repository tree and files...");
+    // Clear previous repo data
+    setAnalysis(null);
+    setRawDiff("");
+    setPrLabel("");
+
     try {
       const data = await getRepoWorkspace(repo, branch);
       setLauncherStep("Syncing pull requests and open issues...");
@@ -168,6 +174,9 @@ export default function Dashboard() {
       setTabs(initialTabs);
       setActiveTab(initialActive);
 
+      // Warm up architecture manual in the background
+      generateRepoManual(data.repo, data.branch || branch, false).catch(() => {});
+
       if (prNumber) {
         setLauncherStep(`Analyzing Pull Request #${prNumber}...`);
         try {
@@ -175,6 +184,15 @@ export default function Dashboard() {
           handleResult(result, `${data.repo}#${prNumber}`, result.raw_diff || "");
         } catch (e) {
           console.warn("Auto PR analysis notice:", e);
+        }
+      } else if (data.pull_requests && data.pull_requests.length > 0) {
+        const firstPr = data.pull_requests[0];
+        setLauncherStep(`Analyzing active Pull Request #${firstPr.number}: ${firstPr.title}...`);
+        try {
+          const result = await analyzePR({ repo: data.repo, pr_number: firstPr.number });
+          handleResult(result, `${data.repo}#${firstPr.number}`, result.raw_diff || "");
+        } catch (e) {
+          console.warn("Auto first PR analysis notice:", e);
         }
       }
     } catch (err: any) {
@@ -607,6 +625,7 @@ export default function Dashboard() {
           prLabel={prLabel}
           repo={workspace?.repo}
           branches={workspace?.branches}
+          files={workspace?.files || []}
           onOpenFile={(path) => {
             if (path) {
               setTabs((prev) => (prev.includes(path) ? prev : [...prev, path]));
@@ -616,7 +635,13 @@ export default function Dashboard() {
           }}
         />
       )}
-      {activeRail === "flow" && <ArchitectureGraphView />}
+      {activeRail === "flow" && (
+        <ArchitectureGraphView 
+          repo={workspace?.repo}
+          branch={workspace?.branch}
+          files={workspace?.files || []}
+        />
+      )}
       {activeRail === "cloud" && <WebhookSyncView />}
       {activeRail === "tools" && <ToolsConfigView />}
     </div>

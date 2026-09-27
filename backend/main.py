@@ -238,14 +238,40 @@ def get_repo_workspace(
     """
     token = session_token or os.getenv("GITHUB_TOKEN", "")
     owner, repo_name, canonical_repo = _normalize_repo(repo)
+    is_local_repo = canonical_repo.lower() in [
+        "pg300604/repomind-ibm_bob2.0_hackathon_proj",
+        "repomind",
+    ]
 
     try:
         info = github_client.get_repo_info(owner, repo_name, token=token)
         default_branch = info.get("default_branch", branch)
         target_branch = branch if branch != "main" else default_branch
 
-        # Fetch files from GitHub
-        files_data = github_client.get_repo_files(owner, repo_name, target_branch, token=token)
+        # Fetch files from GitHub (try target branch, fallback to default branch or main/master)
+        files_data = []
+        candidate_branches = [target_branch]
+        if default_branch not in candidate_branches:
+            candidate_branches.append(default_branch)
+        for b in ["main", "master"]:
+            if b not in candidate_branches:
+                candidate_branches.append(b)
+
+        fetch_err = None
+        for cand in candidate_branches:
+            try:
+                files_data = github_client.get_repo_files(owner, repo_name, cand, token=token)
+                target_branch = cand
+                break
+            except Exception as err:
+                fetch_err = err
+                continue
+
+        if not files_data:
+            if fetch_err:
+                raise fetch_err
+            raise RuntimeError(f"No files found in {canonical_repo}")
+
         files = [f["path"] for f in files_data]
 
         # Fetch PRs and issues
@@ -270,43 +296,48 @@ def get_repo_workspace(
             "session": session,
         }
     except Exception as e:
-        print(f"[workspace] Remote fetch fallback for {repo}: {e}")
-        # Local workspace fallback
-        local_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
-        local_files = []
-        try:
-            for root, dirs, filenames in os.walk(local_root):
-                # Skip heavy directories
-                dirs[:] = [d for d in dirs if d not in [".git", "node_modules", ".next", ".venv", "__pycache__"]]
-                for fn in filenames:
-                    rel = os.path.relpath(os.path.join(root, fn), local_root).replace("\\", "/")
-                    local_files.append(rel)
-        except Exception:
-            pass
+        print(f"[workspace] Remote fetch notice for {canonical_repo}: {e}")
+        # Only fall back to local project disk if the user actually requested the local RepoMind workspace!
+        if is_local_repo:
+            local_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+            local_files = []
+            try:
+                for root, dirs, filenames in os.walk(local_root):
+                    dirs[:] = [d for d in dirs if d not in [".git", "node_modules", ".next", ".venv", "__pycache__", "data", "logs"]]
+                    for fn in filenames:
+                        rel = os.path.relpath(os.path.join(root, fn), local_root).replace("\\", "/")
+                        local_files.append(rel)
+            except Exception:
+                pass
 
-        session = database.upsert_workspace(
-            repo=repo,
-            branch=branch,
-            files_count=len(local_files),
-            open_prs_count=0,
-            open_issues_count=0,
+            session = database.upsert_workspace(
+                repo=canonical_repo,
+                branch=branch,
+                files_count=len(local_files),
+                open_prs_count=0,
+                open_issues_count=0,
+            )
+
+            return {
+                "repo": canonical_repo,
+                "info": {
+                    "name": repo_name,
+                    "full_name": canonical_repo,
+                    "description": "RepoMind Intelligent Workspace (Local Disk)",
+                    "default_branch": branch,
+                    "stars": 0,
+                    "forks": 0,
+                },
+                "files": local_files or ["backend/main.py", "frontend/lib/api.ts", "README.md"],
+                "pull_requests": [],
+                "issues": [],
+                "session": session,
+            }
+        
+        raise HTTPException(
+            status_code=502,
+            detail=f"Unable to fetch repository '{canonical_repo}' from GitHub. Verify repository name and permissions: {e}"
         )
-
-        return {
-            "repo": repo,
-            "info": {
-                "name": repo_name,
-                "full_name": repo,
-                "description": "RepoMind Intelligent Workspace",
-                "default_branch": branch,
-                "stars": 0,
-                "forks": 0,
-            },
-            "files": local_files or ["backend/main.py", "frontend/lib/api.ts", "README.md"],
-            "pull_requests": [],
-            "issues": [],
-            "session": session,
-        }
 
 
 @app.get("/workspaces")
@@ -347,10 +378,16 @@ def get_file_content(
 ):
     """
     Retrieve file content.
-    Prioritizes local workspace disk for speed and offline edits,
-    falling back to GitHub raw content API.
+    For the local RepoMind workspace, reads from local disk.
+    For any external/imported repository, fetches live from GitHub.
     """
     token = session_token or os.getenv("GITHUB_TOKEN", "")
+    owner, repo_name, canonical_repo = _normalize_repo(repo)
+    is_local_repo = canonical_repo.lower() in [
+        "pg300604/repomind-ibm_bob2.0_hackathon_proj",
+        "repomind",
+    ]
+
     local_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     local_path = os.path.normpath(os.path.join(local_root, path))
 
@@ -358,12 +395,13 @@ def get_file_content(
     if not local_path.startswith(local_root):
         raise HTTPException(status_code=403, detail="Forbidden file path")
 
-    if os.path.isfile(local_path):
+    # Only read from local disk if this is the active local RepoMind repository!
+    if is_local_repo and os.path.isfile(local_path):
         try:
             with open(local_path, "r", encoding="utf-8", errors="replace") as fh:
                 content = fh.read()
             return {
-                "repo": repo,
+                "repo": canonical_repo,
                 "path": path,
                 "branch": branch,
                 "content": content,
@@ -373,11 +411,10 @@ def get_file_content(
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    # Fallback to GitHub raw content
+    # Fetch from GitHub raw content
     try:
-        owner, repo_name, canonical_repo = _normalize_repo(repo)
         url = f"https://raw.githubusercontent.com/{owner}/{repo_name}/{branch}/{path}"
-        resp = httpx.get(url, headers=github_client._auth_headers(token), timeout=15)
+        resp = httpx.get(url, headers=github_client._auth_headers(token), timeout=15, follow_redirects=True)
         if resp.status_code == 200:
             return {
                 "repo": canonical_repo,
@@ -390,7 +427,27 @@ def get_file_content(
     except Exception:
         pass
 
-    raise HTTPException(status_code=404, detail=f"File not found: {path}")
+    # Fallback to GitHub contents API (handles base64 encoding and non-main default branches)
+    try:
+        api_url = f"https://api.github.com/repos/{owner}/{repo_name}/contents/{path}?ref={branch}"
+        api_resp = httpx.get(api_url, headers=github_client._auth_headers(token), timeout=15)
+        if api_resp.status_code == 200:
+            item = api_resp.json()
+            if item.get("encoding") == "base64" and item.get("content"):
+                import base64
+                decoded = base64.b64decode(item["content"]).decode("utf-8", errors="replace")
+                return {
+                    "repo": canonical_repo,
+                    "path": path,
+                    "branch": branch,
+                    "content": decoded,
+                    "source": "github_api",
+                    "size": len(decoded),
+                }
+    except Exception:
+        pass
+
+    raise HTTPException(status_code=404, detail=f"File not found: {path} in {canonical_repo} (branch: {branch})")
 
 
 class SaveFilePayload(BaseModel):
