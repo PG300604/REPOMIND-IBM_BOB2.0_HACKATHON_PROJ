@@ -10,7 +10,7 @@ services:
     autoDeploy: true
     envVars:
       - key: PYTHON_VERSION
-        value: 3.12.0
+        value: 3.12.8
       - key: GITHUB_TOKEN
         sync: false
       - key: GROQ_API_KEY
